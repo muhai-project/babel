@@ -21,7 +21,7 @@
           parse-all parse-all-started parse-all-finished
           render de-render create-initial-structure))
 
-(defgeneric create-initial-structure (meaning mode)
+(defgeneric create-initial-structure (meaning mode &key &allow-other-keys)
   (:documentation "Makes a new coupled feature structure that
                    contains the meaning"))
 

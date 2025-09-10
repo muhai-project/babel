@@ -126,43 +126,43 @@
       (loop for diagnostic in (get-diagnostics notified-object)
             when (trigger?
                   diagnostic trigger :notified-object notified-object)
-            do (loop
-                  with problems = (apply 'diagnose diagnostic notified-object
-                                         :trigger trigger
-                                         parameters)
-                  for problem in (listify problems)
-                  when (and (slot-exists-p problem 'issued-by)
-                            (null (issued-by problem)))
-                  do (setf (issued-by problem) diagnostic)
-                  do
-                    (add-problem notified-object problem)
-                    (push problem new-problems)
-                  finally 
-                    (notify diagnose-finished diagnostic notified-object problems))))
+              do (loop
+                    with problems = (apply 'diagnose diagnostic notified-object
+                                           :trigger trigger
+                                           parameters)
+                    for problem in (listify problems)
+                    when (and (slot-exists-p problem 'issued-by)
+                              (null (issued-by problem)))
+                      do (setf (issued-by problem) diagnostic)
+                    do
+                      (add-problem notified-object problem)
+                      (push problem new-problems)
+                    finally 
+                      (notify diagnose-finished diagnostic notified-object problems))))
     (notify all-diagnostics-run notified-object new-problems)
     ;; 2. run repairs
     (unless omit-repairs
       (loop
-       for problem in (cons nil (append new-problems old-problems))
-       for continue = t
-       do (loop
-           for repair in (get-repairs notified-object)
-           for (fixes continue?)
-           = (multiple-value-list
-              (when (apply 'trigger? repair trigger
-                           :problem problem
-                           :notified-object notified-object
-                           parameters)
-                (apply 'repair repair problem notified-object
-                       :trigger trigger parameters)))
-           when fixes
-           do (loop for fix in (listify fixes)
-                    do
-                    (handle-fix fix repair problem notified-object)
-                    (push fix new-fixes)
-                 finally 
-                   (notify repair-finished repair notified-object fixes))
-           and do (setf continue continue?)
-           while continue)))
+         for problem in (cons nil (append new-problems old-problems))
+         for continue = t
+         do (loop
+               for repair in (get-repairs notified-object)
+               for (fixes continue?)
+                 = (multiple-value-list
+                    (when (apply 'trigger? repair trigger
+                                 :problem problem
+                                 :notified-object notified-object
+                                 parameters)
+                      (apply 'repair repair problem notified-object
+                             :trigger trigger parameters)))
+               when fixes
+                 do (loop for fix in (listify fixes)
+                          do
+                            (handle-fix fix repair problem notified-object)
+                            (push fix new-fixes)
+                          finally 
+                            (notify repair-finished repair notified-object fixes))
+                 and do (setf continue continue?)
+               while continue)))
     (notify notify-learning-finished notified-object trigger new-problems new-fixes)
     (values new-problems new-fixes)))
