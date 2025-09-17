@@ -238,3 +238,120 @@
 (comprehend "would you like tea or coffee?")
 (comprehend-and-formulate "would you like tea or coffee?")
 
+
+
+(def-fcg-cxn the-two-of-them-cxn
+             ((?the-two-of-them-unit
+               (subunits (?the-unit ?cardinal-unit ?of-unit ?pers-pronoun-unit ))
+               (agreement (number pl)
+                          (person 3)))
+              <-
+              (?the-unit
+               --
+               (HASH form ((sequence "the" ?the-start ?the-end))))
+              (?cardinal-unit
+               --
+               (HASH form ((sequence "two" ?two-start ?two-end))))
+              (?of-unit
+               --
+               (HASH form ((sequence "of" ?of-start ?of-end))))
+              (?pers-pronoun-unit
+               --
+               (HASH form ((sequence "them" ?them-start ?them-end))))
+              (?the-two-of-them-unit
+               (HASH meaning ((group ?g)
+                              (:quant ?g 2))
+               --
+               (HASH form ((meets ?the-end ?two-start)
+                           (meets ?two-end ?of-start)
+                           (meets ?of-end ?them-start)))))))
+
+
+(def-fcg-cxn two-cxn
+             ((?two-unit
+               (lex-class cardinal)
+               (meaning-args (?x))
+               (form-args (?two-start ?two-end)))
+              <-
+              (?two-unit
+               (HASH meaning ((:quant ?x 2)))
+               --
+               (HASH form ((sequence "two" ?two-start ?two-end))))))
+
+(def-fcg-cxn them-cxn
+             ((?them-unit
+               (lex-class pers-pronoun)
+               (meaning-args (?t))
+               (form-args (?them-start ?them-end))
+               (agreement (person 3)
+                          (number pl)
+                          (case accusative)))
+              <-
+              (?them-unit
+               (HASH meaning ((they ?t)))
+               --
+               (HASH form ((sequence "them" ?them-start ?them-end))))))
+
+
+(def-fcg-cxn the-CARD-of-PRON-cxn
+             ((?the-two-of-them-unit
+               (subunits (?the-unit ?cardinal-unit ?of-unit ?pers-pronoun-unit ))
+               (agreement (number pl)
+                          (person ?person)))
+              <-
+              (?the-unit
+               --
+               (HASH form ((sequence "the" ?the-start ?the-end))))
+              (?cardinal-unit
+               (meaning-args (?g))
+               --
+               (lex-class cardinal)
+               (form-args (?cardinal-start ?cardinal-end)))
+              (?of-unit
+               --
+               (HASH form ((sequence "of" ?of-start ?of-end))))
+              (?pers-pronoun-unit
+               (meaning-args (?g))
+               --
+               (lex-class pers-pronoun)
+               (agreement (person ?person)
+                          (number pl)
+                          (case accusative))
+               (form-args (?pronoun-start ?pronoun-end)))
+              (?the-two-of-them-unit
+               (HASH meaning ((group ?g))
+               --
+               (HASH form ((meets ?the-end ?cardinal-start)
+                           (meets ?cardinal-end ?of-start)
+                           (meets ?of-end ?pronoun-start)))))))
+
+
+(def-fcg-cxn the-two-of-them-cxn
+             ((?the-two-of-them-unit
+               (subunits (?the-unit ?cardinal-unit ?of-unit ?pers-pronoun-unit ))
+               (agreement (number pl)
+                          (person 3)))
+              <-
+              (?the-unit
+               --
+               (HASH form ((sequence "the" ?the-start ?the-end))))
+              (?cardinal-unit
+               --
+               (HASH form ((sequence "two" ?cardinal-start ?cardinal-end))))
+              (?of-unit
+               --
+               (HASH form ((sequence "of" ?of-start ?of-end))))
+              (?pers-pronoun-unit
+               --
+               (HASH form ((sequence "them" ?pronoun-start ?pronoun-end))))
+              (?the-two-of-them-unit
+               (HASH meaning ((group ?g)
+                              (:quant ?g 2)))
+               --
+               (HASH form ((meets ?the-end ?cardinal-start)
+                           (meets ?cardinal-end ?of-start)
+                           (meets ?of-end ?pronoun-start))))))
+
+
+(comprehend-all "the two of them")
+
