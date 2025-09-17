@@ -846,7 +846,7 @@ is replaced with replacement."
             (when conflicting-values
               (add-element `((h4) "The following elements in the cxn give conflicts in matching: "))
               (loop for (element . rest) on conflicting-values
-                    do (add-element (get-highlighted-element (get-properly-binding-name element) :if-string-print-as-string nil))
+                    do (add-element (get-highlighted-element (get-base-name element :remove-question-mark nil) :if-string-print-as-string nil))
                     when rest do (add-element `((br))))
               (add-element `((h4) "with the following elements in the transient structure: "))
               (loop for element in bindings
@@ -1793,7 +1793,7 @@ div.fcg-light-construction-inventory-sep { padding-left:0px; padding-right:0px;p
             (if (member-of-tree (first binding) (left-pole-structure source-ts)) ;; if first var in binding is from the ts
               (pushend binding fcg-light-bindings) ;; show the binding pair as it is
               (let ((first-elem (intern
-                                 (get-properly-binding-name (first binding))))
+                                 (get-base-name (first binding) :remove-question-mark nil)))
                     (second-elem (rest binding)))
                 ;; strip the sufix from the first binding in the binding pair and add the couple to the bindings
                 (pushend (cons first-elem second-elem) fcg-light-bindings)))))
@@ -2026,7 +2026,7 @@ div.fcg-light-construction-inventory-sep { padding-left:0px; padding-right:0px;p
                    (when conflicting-values
                      (add-element `((h4) "The following elements in the cxn give conflicts in matching: "))
                      (loop for (element . rest) on conflicting-values
-                           do (add-element (get-highlighted-element (get-properly-binding-name element) :if-string-print-as-string nil))
+                           do (add-element (get-highlighted-element (get-base-name element :remove-question-mark nil) :if-string-print-as-string nil))
                            when rest do (add-element `((br))))
                      (add-element `((h4) "with the following elements in the transient structure: "))
                      (loop for element in bindings
@@ -2115,7 +2115,7 @@ div.fcg-light-construction-inventory-sep { padding-left:0px; padding-right:0px;p
                    (when conflicting-values
                      (add-element `((h4) "The following elements in the cxn give conflicts in matching: "))
                      (loop for (element . rest) on conflicting-values
-                           do (add-element (get-highlighted-element (get-properly-binding-name element) :if-string-print-as-string nil))
+                           do (add-element (get-highlighted-element (get-base-name element :remove-question-mark nil) :if-string-print-as-string nil))
                            when rest do (add-element `((br))))
                      (add-element `((h4) "with the following elements in the transient structure: "))
                      (loop for element in bindings

@@ -155,8 +155,7 @@
                       expand-initially)
   ""
   (let* ((node-id-0 (make-id 'au-repair-state))
-	 (node-color (if (or (remaining-form-speech-act state)
-                             (remaining-meaning-speech-act state))
+	 (node-color (if (find state (succeeded-states (au-repair-processor state)))
                        "#1e81b0"
                        "#e28743"))
          (node-id (symb tree-id '- (created-at state)))
@@ -251,10 +250,14 @@
   ""
   `((span)
      ,(cond ((base-cxn state)
-             (make-html-construction-title (base-cxn state)))
+             `((span) "learning from "
+               ((i) ,(format nil "~(~a~) (cf: ~a cm: ~a)"
+                             (name (base-cxn state))
+                             (cost (au-result-form state))
+                             (cost (au-result-meaning state))))))
             ((eql (type-of (first (new-cxns state))) 'holophrastic-cxn)
-             "holophrastic-cxn")
+             "new holophrastic cxn")
             ((eql (type-of (first (new-cxns state))) 'filler-cxn)
-             "filler-cxn")
+             "new filler cxn")
             (t
              "initial"))))

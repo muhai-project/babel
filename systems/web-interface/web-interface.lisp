@@ -474,7 +474,7 @@ hr { border:0px;color:#777;background-color:#777;height:1px;width:100%;}
      (print js-file)
      (let ((*static-html* t))
        ,@body)
-     (with-open-file (stream html-file :direction :output :if-exists :supersede)
+     (with-open-file (stream html-file :direction :output :if-exists :supersede :external-format :utf-8 :element-type 'cl:character)
        (write-static-page stream ,title)
        (force-output stream))
      (print html-file) (princ #\newline)

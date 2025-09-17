@@ -35,8 +35,8 @@
 
 (proclaim '(inline get-base-name))
 (defun get-base-name (name &key
-                      (remove-numeric-tail t)
-                      (remove-question-mark t))
+                           (remove-numeric-tail t)
+                           (remove-question-mark t))
   "Return the base of the given name.
    - If base is a symbol then the base name is the symbol's name.
    - If base is a string then this string is the base name.
@@ -48,10 +48,11 @@
      numerical characters are removed."
   (declare (type (or string symbol) name))
   (let* ((name (cond ((stringp name) (upcase name))
-                    ((symbolp name) (symbol-name name))
-                    (t (write-to-string name))))
-        (name-as-string name))
-    (if remove-numeric-tail (setq name (remove-numeric-tail name)))
+                     ((symbolp name) (symbol-name name))
+                     (t (write-to-string name))))
+         (name-as-string name))
+    (when remove-numeric-tail
+      (setf name (remove-numeric-tail name)))
     (if (string= name "") ;; for symbols like -5
       name-as-string
       (if (and remove-question-mark (char-equal #\? (elt name 0)))

@@ -307,16 +307,19 @@
                                (nth i sequence-predicates))
         if next-predicate
           do
+
             (cond ((and (eql right-boundary (third next-predicate)) ;; boundaries coincide
                         (null current-simplified-string)) ;;start new merged string
                    (setf current-simplified-string string)
                    (setf current-simplified-sequence-predicate `(sequence ,current-simplified-string ,left-boundary ,right-boundary)))
                   
+
                   ((and (eql right-boundary (third next-predicate))  ;; boundaries coincide
                         current-simplified-string)
                    (setf current-simplified-string (string-append current-simplified-string string))
                    (setf current-simplified-sequence-predicate `(sequence ,current-simplified-string ,(third current-simplified-sequence-predicate) ,right-boundary)))
                   
+
                   ((null (eql right-boundary (third next-predicate)))  ;; boundaries do not coincide
                    (if current-simplified-string
                      (progn 

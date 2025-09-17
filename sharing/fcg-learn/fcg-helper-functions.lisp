@@ -8,10 +8,11 @@
 
 (defun empty-root-p (node)
   "Returns t if the root unit of the node contains no form or meaning."
-  (let ((root-unit (get-root (left-pole-structure (car-resulting-cfs (cipn-car node))))))
-    (unless (or (unit-feature-value root-unit 'form)
-                (unit-feature-value root-unit 'meaning))
-      t)))
+  (when (find 'cxn-applied (statuses node)) ;; return nil immediately if node has no result (e.g. first-merge failed)
+    (let ((root-unit (get-root (left-pole-structure (car-resulting-cfs (cipn-car node))))))
+      (unless (or (unit-feature-value root-unit 'form)
+                  (unit-feature-value root-unit 'meaning))
+        t))))
 
 
 (defmethod find-cxn ((cxn holophrastic-cxn) (hashed-fcg-construction-set hashed-fcg-construction-set)
@@ -21,24 +22,38 @@
         (gethash (attr-val cxn :form-hash-key) (constructions-hash-table hashed-fcg-construction-set))
         :test test :key key))
 
+(defun substitute-bindings-including-constants (bindings list-or-atom)
+  "Substitutes all bindings in list-or-atom."
+  (cond ((lookup list-or-atom bindings))
+        ((atom list-or-atom)
+         list-or-atom)
+        (t
+         (cons (substitute-bindings-including-constants bindings (first list-or-atom))
+               (substitute-bindings-including-constants bindings (rest list-or-atom))))))        
+
+(defun subst-bindings (set-of-predicates bindings)
+  (loop for predicate in set-of-predicates
+        collect (loop for elem in predicate
+                      for subst = (assoc elem bindings)
+                      if subst collect (cdr subst)
+                      else collect elem)))
+
 (defun fresh-variables (set-of-predicates)
   "Renames all variables in a set-of-predicates."
-  (labels ((subst-bindings (bindings)
-             (loop for predicate in set-of-predicates
-                   collect (loop for elem in predicate
-                                 for subst = (assoc elem bindings)
-                                 if subst collect (cdr subst)
-                                 else collect elem))))
-    (let* ((all-variables (find-all-anywhere-if #'variable-p set-of-predicates))
-           (unique-variables (remove-duplicates all-variables))
-           (renamings (loop for var in unique-variables
-                            for base-name = (get-base-name var)
-                            collect (cons var (internal-symb (make-var base-name))))))
-      (values (subst-bindings renamings) renamings))))
+  (let* ((all-variables (find-all-anywhere-if #'variable-p set-of-predicates))
+         (unique-variables (remove-duplicates all-variables))
+         (renamings (loop for var in unique-variables
+                          for base-name = (get-base-name var)
+                          collect (cons var (internal-symb (make-var base-name))))))
+    (values (subst-bindings set-of-predicates renamings) renamings)))
 
-(defun make-cxn-name (form-sequence-predicates)
+(defun make-filler-unit-name (form-predicates)
   "Create a unique construction name based on the strings present in form-sequence-predicates."
-  (make-id (upcase (substitute #\- #\Space (format nil "~{~a~^_~}-cxn" (mapcar #'second form-sequence-predicates))))))
+  (make-var (upcase (substitute #\- #\Space (format nil "~{~a~^_~}-unit" (render form-predicates :render-sequences))))))
+
+(defun make-cxn-name (form-predicates)
+  "Create a unique construction name based on the strings present in form-sequence-predicates."
+  (make-id (upcase (substitute #\- #\Space (format nil "~{~a~^_~}-cxn" (render form-predicates :render-sequences))))))
 
 (defun remove-cxn-tail (string)
   "Return part of string before -cxn."
@@ -49,6 +64,10 @@
 (defun other-cxn-w-same-form-and-meaning-p (cxn-1 cxn-2)
   "Returns true if two different constructions have the same form and meaning."
   (unless (eql (name cxn-1) (name cxn-2))
+    (equivalent-form-meaning-mapping cxn-1 cxn-2)))
+
+(defun equivalent-form-meaning-mapping (cxn-1 cxn-2)
+  "Returns true if two different constructions have the same form and meaning."
     (let ((meaning-cxn-1 (attr-val cxn-1 :meaning))
           (meaning-cxn-2 (attr-val cxn-2 :meaning))
           (form-cxn-1 (attr-val cxn-1 :form))
@@ -57,7 +76,7 @@
       (and (= (length meaning-cxn-1) (length meaning-cxn-2))
            (= (length form-cxn-1) (length form-cxn-2))
            (pn::equivalent-predicate-networks-p form-cxn-1 form-cxn-2)
-           (pn::equivalent-predicate-networks-p meaning-cxn-1 meaning-cxn-2)))))
+           (pn::equivalent-predicate-networks-p meaning-cxn-1 meaning-cxn-2))))
 
 
 (defmethod upward-branch ((state au-repair-state) &key (include-initial t))

@@ -16,6 +16,10 @@ If you only wish to use Fluid Construction Grammar or Incremental Recruitment La
 
 If you want the full Babel experience, detailed installation instructions for all major operating systems can be found on the [wiki](https://gitlab.ai.vub.ac.be/ehai/babel/-/wikis/home).
 
+## Technical documentation
+
+Technical documentation for the Babel architecture is available at [tech-doc](https://emergent-languages.org/tech-doc/).
+
 ## License
 
 See [LICENSE](LICENSE)

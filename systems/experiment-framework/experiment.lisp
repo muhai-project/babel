@@ -224,7 +224,7 @@
         for experiment = (apply 'make-instance
                                 experiment-class
                                 :series-number series                                
-                                experiment-parameters)
+                                (copy-object experiment-parameters))
         do (run-series experiment (+ 1 number-of-interactions))
         (notify series-finished series))
   (notify batch-finished (symbol-name experiment-class)))

@@ -9,7 +9,6 @@
 (defmethod fcg-expand ((type (eql :handle-regex-sequences))
                        &key value source bindings merge? cxn-inventory)
   "Regex match cxn form sequences in root form sequences and merge new bindings into bindings list."
-  (declare (ignore cxn-inventory))
   (if merge?
     (let ((precedes-predicates (find-all-if #'(lambda (predicate)
                                                   (eql (first predicate) 'precedes)) (rest value))))
@@ -27,7 +26,7 @@
     (let ((sequence-predicates (remove-if-not #'(lambda (predicate)
                                                   (eql (first predicate) 'sequence)) (rest value))))
       (if sequence-predicates
-        (let ((sequence-bindings-lists (match-pattern-sequence-predicates-in-source-sequence-predicates sequence-predicates source bindings)))
+        (let ((sequence-bindings-lists (match-pattern-sequence-predicates-in-source-sequence-predicates sequence-predicates source bindings cxn-inventory)))
           (if sequence-bindings-lists
             ;; If sequence predicates could be matched, add bindings  
             (values source (merge-bindings-lists bindings sequence-bindings-lists))
@@ -39,41 +38,58 @@
 
 (export '(filter-valid-sequence-bindings-lists))
 
-(defun match-pattern-sequence-predicates-in-source-sequence-predicates (pattern-sequence-predicates source-sequence-predicates bindings)
+(defun match-pattern-sequence-predicates-in-source-sequence-predicates (pattern-sequence-predicates source-sequence-predicates bindings &optional cxn-inventory)
   "Matches two sets of sequence-predicates, returns validated bindings-lists with all options. Takes into account existing bindings."
   (when source-sequence-predicates
     (loop for pattern-sequence-predicate in pattern-sequence-predicates
-          collect (match-pattern-sequence-predicate-in-source-sequence-predicates pattern-sequence-predicate source-sequence-predicates)
+          collect (match-pattern-sequence-predicate-in-source-sequence-predicates pattern-sequence-predicate source-sequence-predicates cxn-inventory)
             into possible-bindings-lists-per-pattern-predicate
           finally (return (loop for list-of-lr-pairs in (filter-valid-sequence-bindings-lists
                                                          (apply #'cartesian-product possible-bindings-lists-per-pattern-predicate) bindings)
                                 collect (loop for lr-pair in  list-of-lr-pairs
                                               append lr-pair))))))
 
-(defun match-pattern-sequence-predicate-in-source-sequence-predicates (pattern-sequence-predicate source-sequence-predicates)
+(defun match-pattern-sequence-predicate-in-source-sequence-predicates (pattern-sequence-predicate source-sequence-predicates cxn-inventory)
   "Matches a sequence-predicate against a list of sequence-predicates, returns unfiltered potential bindings lists."
   (loop for source-sequence-predicate in source-sequence-predicates
-        append (match-sequence-predicates pattern-sequence-predicate source-sequence-predicate)))
+        append (match-sequence-predicates pattern-sequence-predicate source-sequence-predicate cxn-inventory)))
 
+(defun escape-re-string (re-string)
+  "Escapes regex special characters from literal string that will be used as regex."
+  (loop with pattern-string = (copy-seq re-string)
+        for special-string in '("?" "(" ")" "/" "+" "*")
+        when (search special-string pattern-string)
+          do (setf pattern-string (replace-all pattern-string special-string (string-append "\\" special-string)))
+        finally (return pattern-string)))
 
-(defun match-sequence-predicates (pattern-predicate source-predicate)
+(defun retrieve-or-create-re-scanner (re-string cxn-inventory)
+  "If a regex scanner for re-string exists in the blackboard of the construction-inventory, retrieve it.
+Otherwise create a scanner and store it."
+  (let* ((re-scanners (or ;; retrieve re-scanners from cxn-inventory if the data-field exists
+                          (find-data (blackboard cxn-inventory) :re-scanners)
+                          ;; otherwise create the data-field
+                          (progn
+                            (add-data-field (blackboard cxn-inventory) :re-scanners (make-hash-table :test #'equal))
+                            (get-data (blackboard cxn-inventory) :re-scanners)))))
+    
+    (or ;; Return the scanner if it is exists
+        (gethash re-string re-scanners)
+        ;; Create, add and return if it doesn't
+        (setf (gethash re-string re-scanners) (cl-ppcre:create-scanner (escape-re-string re-string))))))
+                      
+(defun match-sequence-predicates (pattern-predicate source-predicate cxn-inventory)
   "Matches two sequence-predicates, returns unfiltered potential bindings lists."
-    (let* ((pattern-string (second pattern-predicate))
-           (escaped-pattern-string
-            (when (stringp pattern-string)
-              (loop for special-string in '("?" "(" ")" "/" "+" "*")
-                    when (search special-string pattern-string)
-                      do (setf pattern-string (replace-all pattern-string special-string (string-append "\\" special-string)))
-                      finally (return pattern-string))))
-           (source-string (second source-predicate))
-           (index-offset (third source-predicate)))
-      (when escaped-pattern-string
-        (let* ((all-match-positions (cl-ppcre:all-matches escaped-pattern-string source-string))
-               (possible-bindings (loop for (left right) on all-match-positions by #'cddr
-                                        collect (list (+ left index-offset) (+ right index-offset)))))
-          (loop for pb in possible-bindings
-                collect (list (make-binding (third pattern-predicate) (first pb))
-                              (make-binding (fourth pattern-predicate) (second pb))))))))
+  (let* ((pattern-string (second pattern-predicate))
+         (regex-scanner (when cxn-inventory (retrieve-or-create-re-scanner pattern-string cxn-inventory)))
+         (source-string (second source-predicate))
+         (index-offset (third source-predicate)))
+    (when pattern-string
+      (let* ((all-match-positions (cl-ppcre:all-matches (or regex-scanner (escape-re-string pattern-string)) source-string))
+             (possible-bindings (loop for (left right) on all-match-positions by #'cddr
+                                      collect (list (+ left index-offset) (+ right index-offset)))))
+        (loop for pb in possible-bindings
+              collect (list (make-binding (third pattern-predicate) (first pb))
+                            (make-binding (fourth pattern-predicate) (second pb))))))))
 
 
 (defun filter-valid-sequence-bindings-lists (list-of-possible-bindings-lists bindings)
@@ -163,7 +179,7 @@
                                                    pattern-sequence-predicates)))
          (matched-positions (loop with matched-positions = nil
                                   for index in list-of-matched-indices
-                                  for binding = (cdr (assoc index bindings :test #'string=))
+                                  for binding = (cdr (assoc index bindings :test #'equalp))
                                   when binding
                                     if (variable-p binding)
                                       do (push (lookup-binding binding bindings) matched-positions)

@@ -10,6 +10,7 @@
 	  stdev
           nth-percentile
 	  correlation
+          fac!
 	  combination
           permutations
           rad-to-deg
@@ -256,7 +257,7 @@ coefficient equal to r**2."
   (mapcar #'log vector))
 
 (defun random-from-range (start end)
-  "Generate a random integer/float in the range [start,end["
+  "Generate a random integer/float in the range [start,end]"
   (if (= start end)
     start
     (+ start (random (- end start)))))

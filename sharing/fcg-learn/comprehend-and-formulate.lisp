@@ -50,8 +50,8 @@
            (applied-fixes (second node-and-fixes-from-learning)))
 
     
-      (when align
-        (align solution-node cip solution-node-after-learning applied-fixes (get-configuration cxn-inventory :alignment-mode)))
+      (when (and solution-node align)
+        (align solution-node cip (get-configuration cxn-inventory :alignment-mode)))
 
       ;; Return
       (cond ((and solution-node (not applied-fixes))

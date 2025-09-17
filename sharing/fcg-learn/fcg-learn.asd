@@ -18,6 +18,7 @@
                (:file "handle-fix")
                (:file "best-solution")
                (:file "equivalent-cxn")
+               (:file "fix-selection")
                (:file "fcg-helper-functions")
                (:file "html")))
                

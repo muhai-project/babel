@@ -31,14 +31,19 @@
                                     :fix-categories (categories fix-cxn-inventory)
                                     :fix-categorial-links (links fix-cxn-inventory)
                                     :fixed-cars fixed-cars
-                                    :speech-act speech-act)
+                                    :speech-act speech-act
+                                    :cip cip)
                      fixes)))
         finally
           ;; Set fix slot of the fix-constructions before returning the fixes
           (mapcar #'(lambda (fix)
                       (loop for fix-cxn in (fix-constructions fix)
                               do (setf (attr-val fix-cxn :fix) fix))) fixes)
-          (return fixes)))
+          ;; Set the description slot to the speech act
+          (mapcar #'(lambda (fix)
+                      (loop for fix-cxn in (fix-constructions fix)
+                            do (setf (description fix-cxn) (form speech-act)))) fixes)
+          (return (select-fixes fixes (get-configuration (construction-inventory cip) :fix-selection-mode)))))
 
 
 (defmethod repair ((repair repair-add-categorial-link)
@@ -79,7 +84,13 @@
                                                                             :test #'equal)
                                    :fixed-cars (append (mapcar #'cipn-car (reverse (upward-branch node-w-empty-root :include-initial nil)))
                                                        (mapcar #'cipn-car (reverse (upward-branch repair-node :include-initial nil))))
-                                   :speech-act (get-data (blackboard (construction-inventory cip)) :speech-act))
+                                   :speech-act (get-data (blackboard (construction-inventory cip)) :speech-act)
+                                   :cip cip)
+            into fixes-with-duplicates
           finally (set-configuration cxn-inventory :category-linking-mode category-linking-mode)
                   (set-configuration cxn-inventory :cxn-supplier-mode cxn-supplier-mode)
-                  (set-configuration cxn-inventory (if (eql (direction cip) '<-) :parse-goal-tests :production-goal-tests) goal-tests))))
+                  (set-configuration cxn-inventory (if (eql (direction cip) '<-) :parse-goal-tests :production-goal-tests) goal-tests)
+                  (return (remove-duplicates fixes-with-duplicates :test #'(lambda (fix-1 fix-2)
+                                                                             (permutation-of? (fix-categorial-links fix-1)
+                                                                                              (fix-categorial-links fix-2)
+                                                                                              :test #'equal)))))))

@@ -138,15 +138,15 @@
     (loop for link in punished-links
           do (add-element (make-html link))))
   (when deleted-cxns
-    (add-element `((h4) "Constructions deleted:"))
+    (add-element `((h4 :style "color: #FF0000") "Constructions deleted:"))
     (loop for cxn in deleted-cxns
           do (add-element (make-html cxn :cxn-inventory (cxn-inventory cxn) :expand-initially nil))))
   (when deleted-categories
-    (add-element `((h4) "Categories deleted:"))
+    (add-element `((h4 :style "color: #FF0000") "Categories deleted:"))
     (loop for category in deleted-categories
           do (add-element (make-html category))))
   (when deleted-links
-    (add-element `((h4) "Categorial links deleted:"))
+    (add-element `((h4 :style "color: #FF0000") "Categorial links deleted:"))
     (loop for link in deleted-links
           do (add-element (make-html link))))
   (unless (or rewarded-cxns punished-cxns deleted-cxns deleted-categories deleted-links)

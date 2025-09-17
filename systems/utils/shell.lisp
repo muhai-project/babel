@@ -128,7 +128,7 @@ Useful for re-using the &REST arg after removing some options."
                   (setf ,stream-to-prog 
                         (sys:run-shell-command 
                          (format nil "~a~{ ~a~}" ,prog (list ,@args))
-                         :input :stream :output :stream :wait nil :element-type 'character #-lispworks7 :external-format #-lispworks7 :utf-8))
+                         :input :stream :output :stream :wait nil :element-type 'character :external-format :utf-8))
                   (setf ,stream-from-prog ,stream-to-prog))
      #+sbcl(let ((proc (sb-ext:run-program ,prog (list ,@args)
 					   :output :stream :input :stream

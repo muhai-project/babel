@@ -12,10 +12,30 @@
 
 (defmethod equivalent-cxn ((cxn-1 t) (cxn-2 t))
   "If cxns are of a different class, they are not equivalent."
-  ;; If cxn-1 and cxn-2 are of the same type, this method should probably not have been called.
-  (when (eql (type-of cxn-1) (type-of cxn-2))
-    (warn "equivalent-cxn: cxn-1 and cxn-2 are of the same type but no dedicated method exists."))
-  ;; return nil
+    (warn (format nil "equivalent-cxn: no methods exist for comparing ~a and ~a." (type-of cxn-1) (type-of cxn-2))))
+
+(defmethod equivalent-cxn ((cxn-1 linking-cxn) (cxn-2 filler-cxn))
+  "If cxns are of a different class, they are not equivalent."
+  nil)
+
+(defmethod equivalent-cxn ((cxn-1 filler-cxn) (cxn-2 linking-cxn))
+  "If cxns are of a different class, they are not equivalent."
+  nil)
+
+(defmethod equivalent-cxn ((cxn-1 holophrastic-cxn) (cxn-2 linking-cxn))
+  "If cxns are of a different class, they are not equivalent."
+  nil)
+
+(defmethod equivalent-cxn ((cxn-1 linking-cxn) (cxn-2 holophrastic-cxn))
+  "If cxns are of a different class, they are not equivalent."
+  nil)
+
+(defmethod equivalent-cxn ((cxn-1 holophrastic-cxn) (cxn-2 filler-cxn))
+  "If cxns are of a different class, they are not equivalent."
+  nil)
+
+(defmethod equivalent-cxn ((cxn-1 filler-cxn) (cxn-2 holophrastic-cxn))
+  "If cxns are of a different class, they are not equivalent."
   nil)
 
 (defmethod equivalent-cxn ((cxn-1 holophrastic-cxn) (cxn-2 holophrastic-cxn))

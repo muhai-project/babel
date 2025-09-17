@@ -108,7 +108,12 @@ against the gold standard and diagnosing gold-standard-not-in-search-space and g
     :accessor speech-act
     :initform nil
     :initarg :speech-act
-    :documentation "The speech act based on which that fix was created."))
+    :documentation "The speech act based on which that fix was created.")
+   (cip
+    :accessor cip
+    :initform nil
+    :initarg :cip
+    :documentation "The cip that was passed to repair and is being fixed."))
   (:documentation "When applying sequentially the fix-cxns to the initial
 transient structure given the categorial links, a solution should be found"))
 
@@ -282,6 +287,16 @@ transient structure given the categorial links, a solution should be found"))
     :accessor all-parents
     :initform nil
     :documentation "All foreparents of the state.")
+   (au-result-form
+    :accessor au-result-form
+    :initform nil
+    :initarg :au-result-form
+    :documentation "Anti-unification result on the form side.")
+   (au-result-meaning
+    :accessor au-result-meaning
+    :initform nil
+    :initarg :au-result-meaning
+    :documentation "Anti-unification result on the meaning side.")
    (created-at
     :accessor created-at
     :initarg :created-at
