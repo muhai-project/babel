@@ -2,16 +2,7 @@
 ;(ql:quickload :casa)
 
 ;; Would you like tea or coffee?
-
-#|(amr::penman->predicates '(l / like-01
-                               :MOD (d/ deontic)
-                               :ARG0 (y / you)
-                               :ARG1 (a / amr-choice
-                                        :op1 (t / tea)
-                                        :op2 (c / coffee))))|#
-
-;((FCG::LIKE-01 FCG::L) (:MOD L D) (DEONTIC D) (FCG::YOU UTILS:Y) (FCG::AMR-CHOICE UTILS:A) (FCG::TEA T) (FCG::COFFEE FCG::C) (:ARG0 FCG::L UTILS:Y) (:ARG1 FCG::L UTILS:A) (:OP1 UTILS:A T) (:OP2 UTILS:A FCG::C))
-
+;; Shall I ring the police?
 
 ;; Constructions: YES-NO-QUESTION, MODAL-CXN, MONOTRANSITIVE-CXN, OR-COORDINATION, NP CXNS (3)
 
@@ -245,7 +236,7 @@
          
 (def-fcg-cxn yes-no-question-cxn
              ((?sentence
-               (subunits (?slot-1 ?slot-2 ?slot-3)))
+               (subunits (?first-slot ?second-slot ?third-slot)))
               <-
               (?sentence
                (HASH meaning ((:polarity ?pred amr-unknown)))
@@ -254,16 +245,16 @@
                            (precedes ?end-1 ?start-2)
                            (precedes ?end-2 ?start-3)
                            (precedes ?end-3 ?question-mark-start))))
-              (?slot-1
+              (?first-slot
                --
                (syntactic-function pred-op)
                (form-args (?start-1 ?end-1)))
-              (?slot-2
+              (?second-slot
                --
                (syntactic-form np)
                (syntactic-function (subject))
                (form-args (?start-2 ?end-2)))
-              (?slot-3
+              (?third-slot
                --
                (meaning-args (?pred))
                (syntactic-function pred-rest)
@@ -274,7 +265,7 @@
 (def-fcg-cxn monotransitive-cxn
              ((?slot-2-predicate
                (subunits (?slot-3-argument))
-               (syntactic-function pred-rest)
+               (syntactic-function (pred-rest))
                (footprints (monotransitive-cxn)))
               <-
               (?slot-1-argument
@@ -298,8 +289,6 @@
 
 
 ;;(comprehend "shall I ring the police?")
-
-
 
 (def-fcg-cxn you-cxn
              ((?you-unit
@@ -344,9 +333,9 @@
                (meaning-args (?a))
                (syntactic-form np)
                (form-args (?first-slot-start ?second-slot-end))
-               (subunits (?first-slot-unit ?second-slot-unit)))
+               (subunits (?first-slot ?second-slot)))
               <-
-              (?first-slot-unit
+              (?first-slot
                (meaning-args (?slot-1-ref))
                --
                (lex-class noun)
@@ -359,7 +348,7 @@
                (HASH form ((sequence "or" ?or-start ?or-end)
                            (precedes ?first-slot-end ?or-start)
                            (precedes ?or-end ?second-slot-start))))
-              (?second-slot-unit
+              (?second-slot
                (meaning-args (?slot-2-ref))
                --
                (lex-class noun)
@@ -390,4 +379,97 @@
                (HASH form ((sequence "would" ?start ?end))))))
 
 ;;(comprehend "would you like tea or coffee?")
-;;(comprehend-and-formulate "would you like tea or coffee?")
+
+(def-fcg-cxn here-cxn
+             ((?here-unit
+               (meaning-args (?h))
+               (form-args (?start ?end))
+               (syntactic-form adverb))
+              <-
+              (?here-unit
+               (HASH meaning ((here ?h)))
+               --
+               (HASH form ((sequence " here" ?start ?end))))))
+
+(def-fcg-cxn it-cleft-cxn
+             ((?sentence
+               (subunits (?first-slot ?second-slot ?third-slot ?fourth-slot)))
+              <-
+              (?first-slot
+               (meaning-args (?t))
+               (syntactic-function (subject))
+               --
+               (HASH form ((sequence "it" ?start-it ?end-it))))
+              (?second-slot
+               (syntactic-function (V))
+               (base-verb be)
+               (HASH meaning ((be.01 ?b)
+                              (:arg1 ?b ?t)
+                              (:arg2 ?b ?c)))
+               --
+               (HASH form ((sequence "s" ?start-is ?end-is))))
+              (?third-slot
+               (meaning-args (?c))
+               (HASH meaning ((:topic ?b ?c)))
+               (syntactic-function (obj attr))
+               --
+               (meaning-args (?c))
+               
+               (syntactic-form adverb))
+              (?fourth-slot
+               (syntactic-function (dependent-clause))
+               --
+               (HASH form ((sequence "where" ?start-where ?end-where)))
+               (syntactic-function (pred-rest))))
+             :description "Highlight focused / new information to hearer.")
+
+(def-fcg-cxn she-cxn
+             ((?she-unit
+               (lex-class pers-pronoun)
+               (syntactic-form np)
+               (meaning-args (?s))
+               (form-args (?start ?end))
+               (agreement (person 3)
+                          (number sg)
+                          (gender f)
+                          (case nominative)))
+              <-
+              (?she-unit
+               (HASH meaning ((she ?s)))
+               --
+               (HASH form ((sequence " she" ?start ?end))))))          
+
+
+(def-fcg-cxn has-done-cxn
+             ((?has-done-unit
+               (meaning-args (?d))
+               (form-args (?start ?end))
+               (syntactic-form verb))
+              <-
+              (?has-done-unit
+               (HASH meaning ((do.02 ?d)))
+               --
+               (HASH form ((sequence " has done" ?start ?end))))))
+
+
+
+(def-fcg-cxn groundbreaking-neuroimaging-research-cxn
+             ((?np-unit
+               (meaning-args (?r))
+               (syntactic-form np)
+               (form-args (?start ?end)))
+              <-
+              (?np-unit
+               (HASH meaning ((research.01 ?r)
+                              (:arg1 ?r ?n)
+                              (neuroimaging ?n)
+                              (:mod ?r ?g)
+                              (groundbreaking ?g)))
+               --
+               (HASH form ((sequence "groundbreaking neuroimaging research" ?start ?end))))))
+
+
+;It's here where she has done groundbreaking neuroimaging research (COCA-2014-SPOK)
+
+(comprehend "it's here where she has done groundbreaking neuroimaging research")
+
