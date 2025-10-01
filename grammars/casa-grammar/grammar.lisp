@@ -6,7 +6,7 @@
 
 ;; Constructions: YES-NO-QUESTION, MODAL-CXN, MONOTRANSITIVE-CXN, OR-COORDINATION, NP CXNS (3)
 
-
+(defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
 ;;(activate-monitor trace-fcg)
 
 (def-fcg-constructions casa-grammar
@@ -47,14 +47,7 @@
                        ;; goal tests for comprehension
                        (:parse-goal-tests
                         :no-applicable-cxns ;; succeeds if node is fully expanded and no cxns could apply to its children
-                        :connected-semantic-network ;; succeeds if the semantic network is fully connected
-                        :only-empty-sequences-in-root
-                        :connected-structure)
-                       ;; goal tests for formulation
-                       (:production-goal-tests
-                        :no-applicable-cxns ;; succeeds if node is fully expanded and no cxns could apply to its children
-                        :no-meaning-in-root ;; succeeds if no meaning predicates remain in root
-                        )))
+                        :connected-semantic-network))) ;; succeeds if the semantic network is fully connected)))
 
 
 ;;(comprehend-all "the two of them")
@@ -212,6 +205,8 @@
              ((?vp-parent
                (meaning-args (?event))
                (syntactic-function (pred-rest)))
+              (?slot-2-predicate
+               (footprints (arg-structure-cxn)))
               <-
               (?slot-1-argument
                (meaning-args (?agent))
@@ -224,6 +219,7 @@
                (meaning ((:arg0 ?event ?agent)
                          (:arg1 ?event ?undergoer)))
                --
+               (footprints (not arg-structure-cxn))
                (parent ?vp-parent)
                (meaning-args (?event))
                (syntactic-form verb))
@@ -231,7 +227,8 @@
                (meaning-args (?undergoer))
                (syntactic-function (unit in predicate))
                --
-               (syntactic-form np))))
+               (syntactic-form np))
+              :disable-automatic-footprints t))
 
 (def-fcg-cxn you-cxn
              (<-
@@ -330,19 +327,28 @@
                --
                (string "she"))))      
 
-(def-fcg-cxn has-done-cxn
+(def-fcg-cxn has-done-lv-cxn
              (<-
-              (?done-unit
-               (meaning ((do.02 ?d)))
-               --
-               (lemma do)
-               (string "done"))
               (?has-unit
-               (meaning-args (?d))
+               (meaning-args (?event))
                (syntactic-form verb)
                --
                (string "has")
-               (dependency-head ?done-unit))))
+               (dependency-head ?done-unit))
+              (?done-unit
+               (syntactic-form verb)
+               --
+               (lemma do)
+               (string "done")
+               (parent ?vp-unit))
+              (?vp-unit
+               --
+               (word-order ((adjacent ?done-unit ?nominalisation-unit)))
+               (constituents (?done-unit ?nominalisation-unit)))
+              (?nominalisation-unit
+               --
+               (syntactic-form np)
+               (meaning-args (?event)))))
 
 (def-fcg-cxn groundbreaking-neuroimaging-research-cxn
              (<-
@@ -357,39 +363,81 @@
                --
                (string "groundbreaking neuroimaging research"))))
 
-(def-fcg-cxn it-cleft-cxn
-             (
+(def-fcg-cxn intransitive-cxn
+             ((?slot-2-predicate
+               (footprints (arg-structure-cxn)))
               <-
+              (?slot-1-argument
+               (syntactic-function (potential subject))
+               --
+               (meaning-args (?agent))
+               (lex-class pers-pronoun)
+               (syntactic-form np))
+              (?slot-2-predicate
+               (sem-roles (arg0 ?agent))
+               (meaning ((:arg0 ?event ?agent)))
+               --
+               (footprints (not arg-structure-cxn))
+               (parent ?vp-parent)
+               (meaning-args (?event))
+               (syntactic-form verb))
+              (?vp-parent
+               (meaning-args (?event))
+               (syntactic-function (pred-rest))
+               --
+               (parent ?sentence))
+              (?sentence
+               (meaning-args (?event))
+               --
+               (constituents (?slot-1-argument ?vp-parent))))
+             :disable-automatic-footprints t)
+
+
+(def-fcg-cxn it-cleft-where-cxn
+             (<-
               (?first-slot
-               (meaning-args (?t))
                (syntactic-function (subject))
                --
                (string "it"))
               (?second-slot
                (syntactic-function (V))
-               (meaning ((be.01 ?b)
-                         (:arg1 ?b ?t)
-                         (:arg2 ?b ?c)))
+               (meaning ((be-located-at-91 ?b)
+                         (:arg2-of ?b ?h)
+                         (:arg1 ?b ?r)))
                --
                (lemma be))
               (?third-slot
-               (meaning ((:topic ?b ?c)))
                (syntactic-function (obj attr))
                --
-               (meaning-args (?c))
-               (syntactic-form adverb))
-              (?where
-               --
-               (string "where")
-               (parent ?fourth-slot))
+               (meaning-args (?h))
+               (syntactic-form adverb)) ;;here
               (?fourth-slot
                (syntactic-function (dependent-clause))
                --
-               (syntactic-function (pred-rest))))
+               (constituents (?where ?dependent-clause)))
+              (?dependent-clause
+               (syntactic-function (dependent-clause))
+               --
+               (meaning-args (?r)))
+              (?where
+               --
+               (string "where")
+               (parent ?fourth-slot)))
              :description "Highlight focused / new information to hearer.")
 
 
-;It's here where she has done groundbreaking neuroimaging research (COCA-2014-SPOK)
+;; It's here where she has done groundbreaking neuroimaging research (COCA-2014-SPOK)
 
-;;(comprehend "it's here where she has done groundbreaking neuroimaging research")
+'(h / here
+    :arg2-of (b / be-located-at-91
+                :arg1 (r / research.01
+                         :arg1 (n / neuroimaging)
+                         :mod (g / groundbreaking)
+                         :arg0 (s / she))))
 
+;;((FCG::HERE FCG::H) (FCG::BE-LOCATED-AT-91 UTILS:B) (FCG::RESEARCH.01 FCG::R) (FCG::NEUROIMAGING FCG::N) (FCG::GROUNDBREAKING FCG::G) (FCG::SHE FCG::S) (:ARG2-OF FCG::H UTILS:B) (:ARG1 UTILS:B FCG::R) (:ARG1 FCG::R FCG::N) (:MOD FCG::R FCG::G) (:ARG0 FCG::R FCG::S))
+
+
+;;(comprehend-all "it's here where she has done groundbreaking neuroimaging research")
+
+;(ql:quickload :amr)
