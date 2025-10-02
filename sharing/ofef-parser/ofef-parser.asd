@@ -1,8 +1,10 @@
-(defsystem "ofef-parser"
+(in-package :asdf)
+
+(defsystem :ofef-parser
   :version "0.0.1"
-  :author ""
+  :author "Jonas Gillain"
   :license ""
-  :depends-on (:fcg :graph-utils)
+  :depends-on (:fcg :graph-utils :parse-float)
   :components ((:file "package")
                (:file "parser"))
   :description "Parser to go from a *fcg-constructions* object in CL to the OFEF (JSON) format to load in PyFCG"

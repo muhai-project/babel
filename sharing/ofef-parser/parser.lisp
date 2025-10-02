@@ -530,7 +530,7 @@ Wrap elements that are strings in extra quotes."
 
 (defun fcg->ofef (fcg-constructions-object &optional (filename "ofef"))
   "Parse the fcg-constructions-object into an OFEF (JSON) file to be imported in PyFCG. The file is saved in /babel/.tmp. The fcg-constructions-object is typically *fcg-constructions*, unless specified otherwise in the grammar definition"
-  (let ((filepath (cl-user::babel-pathname :name filename :type "json" :directory '(".tmp"))))
+  (let ((filepath (cl-user::babel-pathname :name (concatenate 'string (symbol-name (name fcg-constructions-object)) "-" filename) :type "json" :directory '(".tmp"))))
 
     (with-open-file (out filepath
                          :direction :output
