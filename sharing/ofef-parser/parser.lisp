@@ -1,7 +1,22 @@
 (in-package :ofef-parser)
 ;;(ql:quickload :fcg)
 
-(export 'ofef-parser)
+(export 'fcg->ofef)
+
+(defun json-atomic-value (val)
+  "Return the JSON representation of a single atomic value or stringified number."
+  (cond
+    ((eq val t) "true")
+    ((null val) "false")
+    ((numberp val) (princ-to-string val))
+    ((stringp val)
+     (let ((int-val (ignore-errors (parse-integer val :junk-allowed t)))
+           (float-val (ignore-errors (parse-float val :junk-allowed t))))
+       (cond
+         ((and int-val (string= (princ-to-string int-val) val)) (princ-to-string int-val))
+         ((and float-val (string= (princ-to-string float-val) val)) (princ-to-string float-val))
+         (t (format nil "\"~A\"" val)))))
+    (t (format nil "\"~A\"" (stringify-atom val)))))
 
 (defun hashtable-keys->json (ht)
   "Convert a hash table to a JSON array of its keys.
@@ -23,23 +38,42 @@ Keys are lowercased strings (drop leading colon)."
   "Convert an ALIST to a JSON array-of-arrays string.
 Each entry (key . values) is turned into a sublist [key, v1, v2, ...].
 Keys are lowercased strings (colon removed).
-Values are lowercased strings, colon preserved if keyword."
-  (with-output-to-string (out)
-    (write-char #\[ out)
-    (let ((first t))
-      (dolist (entry alist)
-        (unless first (write-string ", " out))
-        (setf first nil)
-        (destructuring-bind (key . values) entry
-          (write-char #\[ out)
-          ;; print key
-          (format out "\"~A\"" (stringify-key key))
-          ;; print values (could be atom or list)
-          (dolist (v (if (listp values) values (list values)))
-            (write-string ", " out)
-            (format out "\"~A\"" (stringify-value v)))
-          (write-char #\] out))))
-    (write-char #\] out)))
+Values are converted to JSON:
+- numbers (or strings representing numbers) are output as numbers
+- booleans t/nil are output as true/false
+- keywords and symbols are lowercased strings
+- other strings are quoted"
+  (labels ((json-value (v)
+             (cond
+               ((eq v t) "true")
+               ((null v) "false")
+               ((numberp v) (princ-to-string v))
+               ((stringp v)
+                ;; Try to parse string as int
+                (let ((int-val (ignore-errors (parse-integer v :junk-allowed t)))
+                      (float-val (ignore-errors (parse-float v :junk-allowed t))))
+                  (cond
+                    ((and int-val (string= (princ-to-string int-val) v)) (princ-to-string int-val))
+                    ((and float-val (string= (princ-to-string float-val) v)) (princ-to-string float-val))
+                    (t (format nil "\"~A\"" v)))))
+               ((symbolp v) (format nil "\"~A\"" (string-downcase (symbol-name v))))
+               (t (format nil "\"~A\"" v)))))  ; fallback
+    (with-output-to-string (out)
+      (write-char #\[ out)
+      (let ((first t))
+        (dolist (entry alist)
+          (unless first (write-string ", " out))
+          (setf first nil)
+          (destructuring-bind (key . values) entry
+            (write-char #\[ out)
+            ;; key
+            (format out "\"~A\"" (stringify-key key))
+            ;; values
+            (dolist (v (if (listp values) values (list values)))
+              (write-string ", " out)
+              (write-string (json-value v) out))
+            (write-char #\] out))))
+      (write-char #\] out))))
 
 (defun alist->json (alist &optional (wrap t))
   (cond
@@ -122,51 +156,56 @@ Keys are lowercase strings (drop leading colon).
 Values are lowercase strings, preserving colon if keyword.
 If a value is a list, it is represented as a JSON array of strings.
 Omit any key-value pair where a value's printed representation starts with #<.
-Convert Lisp booleans: t to true, nil to false."
-  (with-output-to-string (out)
-    (write-char #\{ out)
-    (let ((first t))
-      (maphash
-       (lambda (key val)
-         (let ((val-str (if (listp val)
-                            nil
-                            (princ-to-string val))))
-           ;; Skip if value string starts with "#<"
-           (unless (and val-str
-                        (>= (length val-str) 2)
-                        (char= (char val-str 0) #\#)
-                        (char= (char val-str 1) #\<))
-             (unless first
-               (write-string ", " out))
-             (setf first nil)
-             ;; convert key
-             (let ((key-str (stringify-key key)))
-               (format out "\"~A\": " key-str)
-               ;; handle value(s)
-               (cond
-                 ;; Boolean t
-                 ((eq val t)
-                  (write-string "true" out))
-                 ;; Boolean nil
-                 ((null val)
-                  (write-string "false" out))
-                 ;; JSON array
-                 ((listp val)
-                  (write-char #\[ out)
-                  (loop for v in val
-                        for i from 0
-                        do (progn
-                             (when (> i 0) (write-string ", " out))
-                             (cond
-                               ((eq v t) (write-string "true" out))
-                               ((null v) (write-string "false" out))
-                               (t (format out "\"~A\"" (stringify-value v))))))
-                  (write-char #\] out))
-                 ;; single value (non-boolean atom)
-                 (t
-                  (format out "\"~A\"" (stringify-value val))))))))
-       ht))
-    (write-char #\} out)))
+Convert Lisp booleans: t to true, nil to false.
+Convert stringified numbers to actual JSON numbers."
+  (labels ((json-value (val out)
+             (cond
+               ;; Boolean t
+               ((eq val t) (write-string "true" out))
+               ;; Boolean nil
+               ((null val) (write-string "false" out))
+               ;; Number (already numeric)
+               ((numberp val) (princ val out))
+               ;; String that is numeric
+               ((stringp val)
+                (let ((int-val (ignore-errors (parse-integer val :junk-allowed t)))
+                      (float-val (ignore-errors (parse-float val :junk-allowed t))))
+                  (cond
+                    ((and int-val (string= (princ-to-string int-val) val)) (princ int-val out))
+                    ((and float-val (string= (princ-to-string float-val) val)) (princ float-val out))
+                    (t (format out "\"~A\"" val)))))
+               ;; List/array
+               ((listp val)
+                (write-char #\[ out)
+                (loop for v in val
+                      for i from 0
+                      do (progn
+                           (when (> i 0) (write-string ", " out))
+                           (json-value v out)))
+                (write-char #\] out))
+               ;; Other atoms (keywords, symbols)
+               (t (format out "\"~A\"" (stringify-value val))))))
+    (with-output-to-string (out)
+      (write-char #\{ out)
+      (let ((first t))
+        (maphash
+         (lambda (key val)
+           (let ((val-str (if (listp val) nil (princ-to-string val))))
+             ;; Skip if value string starts with "#<"
+             (unless (and val-str
+                          (>= (length val-str) 2)
+                          (char= (char val-str 0) #\#)
+                          (char= (char val-str 1) #\<))
+               (unless first (write-string ", " out))
+               (setf first nil)
+               ;; write key
+               (format out "\"~A\": " (stringify-key key))
+               ;; write value
+               (json-value val out))))
+         ht))
+      (write-char #\} out))))
+
+
 
 (defun pretty-print-json-file (path &key (indent-size 2))
   "Read JSON from PATH, pretty-print it, and overwrite the same file."
@@ -243,40 +282,66 @@ Each object/array element goes on its own line, nested by INDENT-SIZE spaces."
 
 (defun list-to-json (lst)
   "Convert a Common Lisp list to a JSON array string.
-Each element is stringified using `princ-to-string`."
-  (format nil "[~{\"~A\"~^, ~}]" 
-          (mapcar (lambda (x)
-                    (cond
-                      ((stringp x) x)
-                      ((symbolp x) (string-downcase (symbol-name x)))
-                      (t (princ-to-string x))))
-                  lst)))
+Each element is converted to a JSON value:
+- Numbers are output as-is.
+- Strings that parse exactly as numbers are output as JSON numbers.
+- Symbols are lowercased strings.
+- Other strings are quoted."
+  (format nil "[~{~A~^, ~}]"
+          (mapcar
+           (lambda (x)
+             (cond
+               ;; Numbers
+               ((numberp x) (princ-to-string x))
+               ;; Strings: try to parse as integer
+               ((stringp x)
+                (let ((int-val (ignore-errors (parse-integer x :junk-allowed t)))
+                      (float-val (ignore-errors (parse-float x :junk-allowed t))))
+                  (cond
+                    ((and int-val (string= (princ-to-string int-val) x)) (princ-to-string int-val))
+                    ((and float-val (string= (princ-to-string float-val) x)) (princ-to-string float-val))
+                    (t (format nil "\"~A\"" x)))))
+               ;; Symbols
+               ((symbolp x) (format nil "\"~A\"" (string-downcase (symbol-name x))))
+               ;; Fallback
+               (t (format nil "\"~A\"" x))))
+           lst)))
 
 (defun list-of-lists->json (lol &optional (wrap t))
   "Convert a list of 2-element lists into a JSON object string.
 Each sublist (key value) becomes \"key\": value.
-If WRAP is NIL, omit the outer braces."
-  (with-output-to-string (out)
-    (when wrap (write-char #\{ out))
-    (let ((first t))
-      (dolist (pair lol)
-        (unless first (write-string ", " out))
-        (setf first nil)
-        (destructuring-bind (key value) pair
-          ;; stringify key
-          (format out "\"~A\": " (string-downcase (symbol-name key)))
-          ;; stringify value
-          (cond
-            ((atom value)
-             (format out "\"~A\"" (if (symbolp value)
-                                      (string-downcase (symbol-name value))
-                                      value)))
-            ((listp value)
-             (format out "[~{ \"~A\" ~^, ~}]" (mapcar #'princ-to-string value)))
-            (t
-             ;; fallback
-             (format out "\"~A\"" value))))))
-    (when wrap (write-char #\} out))))
+If WRAP is NIL, omit the outer braces.
+Atomic string values that are numbers are output as JSON numbers."
+  (labels ((json-value (v)
+             (cond
+               ((eq v t) "true")
+               ((null v) "false")
+               ((numberp v) (princ-to-string v))
+               ((stringp v)
+                ;; check if string represents a number
+                (let ((int-val (ignore-errors (parse-integer v :junk-allowed t)))
+                      (float-val (ignore-errors (parse-float v :junk-allowed t))))
+                  (cond
+                    ((and int-val (string= (princ-to-string int-val) v)) (princ-to-string int-val))
+                    ((and float-val (string= (princ-to-string float-val) v)) (princ-to-string float-val))
+                    (t (format nil "\"~A\"" v)))))
+               ((symbolp v) (format nil "\"~A\"" (string-downcase (symbol-name v))))
+               (t (format nil "\"~A\"" v)))))
+    (with-output-to-string (out)
+      (when wrap (write-char #\{ out))
+      (let ((first t))
+        (dolist (pair lol)
+          (unless first (write-string ", " out))
+          (setf first nil)
+          (destructuring-bind (key value) pair
+            ;; key
+            (format out "\"~A\": " (string-downcase (symbol-name key)))
+            ;; value
+            (if (listp value)
+                (format out "[~{~A~^, ~}]" (mapcar #'json-value value))
+                (write-string (json-value value) out)))))
+      (when wrap (write-char #\} out)))))
+
 
 (defun list-of-lists->json-list (lol)
   "Convert a list of lists to a JSON array of arrays string.
@@ -314,7 +379,7 @@ Wrap elements that are strings in extra quotes."
                (setf body (concatenate 'string body "\"" (stringify-atom (name unit)) "\","))
                (setf body (concatenate 'string body "{"))
                (let ((first2 t))
-                 (loop for feature in (unit-structure unit)
+                 (loop for feature in (fcg::unit-structure unit)
                        for feature-type = (cdr (assoc (car feature) ft))
                        do (progn
                             (unless first2
@@ -330,7 +395,8 @@ Wrap elements that are strings in extra quotes."
                                  ;; Case 1: single atom
                                  ((atom value)
                                   ;; atomic value
-                                  (setf body (concatenate 'string body "\"" (stringify-atom value) "\""))
+                                  ;(setf body (concatenate 'string body "\"" (stringify-atom value) "\""))
+                                  (setf body (concatenate 'string body (json-atomic-value value)))
                                   )
 
                                  ((and (listp value)
@@ -382,7 +448,8 @@ Wrap elements that are strings in extra quotes."
                                  ;; Case 1: single atom
                                  ((atom value)
                                   ;; atomic value
-                                  (setf body (concatenate 'string body "\"" (stringify-atom value) "\""))
+                                  ;(setf body (concatenate 'string body "\"" (stringify-atom value) "\""))
+                                  (setf body (concatenate 'string body (json-atomic-value value)))
                                   )
                                  ;; Case 3: several sublists
                                  ((and (listp value)
@@ -461,9 +528,9 @@ Wrap elements that are strings in extra quotes."
     (write-char #\} out)))
 
 
-(defun ofef-parser (fcg-constructions-object &optional (filename "ofef"))
+(defun fcg->ofef (fcg-constructions-object &optional (filename "ofef"))
   "Parse the fcg-constructions-object into an OFEF (JSON) file to be imported in PyFCG. The file is saved in /babel/.tmp. The fcg-constructions-object is typically *fcg-constructions*, unless specified otherwise in the grammar definition"
-  (let ((filepath (babel-pathname :name filename :type "json" :directory '(".tmp"))))
+  (let ((filepath (cl-user::babel-pathname :name filename :type "json" :directory '(".tmp"))))
 
     (with-open-file (out filepath
                          :direction :output
@@ -480,9 +547,9 @@ Wrap elements that are strings in extra quotes."
       (let ((ft (feature-types fcg-constructions-object)))
         (format out (alist->json-list ft))
         (format out ",\"categorial-network\":{\"nodes\":")
-        (format out (hashtable-keys->json (graph-utils::nodes (graph (categorial-network fcg-constructions-object)))))
+        (format out (hashtable-keys->json (graph-utils::nodes (fcg::graph (categorial-network fcg-constructions-object)))))
         (format out ",\"edges\":")
-        (format out (links->json (graph-utils::list-edges (graph (categorial-network fcg-constructions-object)))))
+        (format out (links->json (graph-utils::list-edges (fcg::graph (categorial-network fcg-constructions-object)))))
         (format out "},\"cxns\":")
         (format out (cxns->json (constructions fcg-constructions-object) ft))
         (format out "}")))
