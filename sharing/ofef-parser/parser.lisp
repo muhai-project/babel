@@ -452,10 +452,18 @@ Other strings are wrapped in extra quotes."
                    (loop for feature in (formulation-lock unit)
                        for feature-type = (cdr (assoc (car feature) ft))
                        do (progn
+                            
                             (unless first2
                               (setf body (concatenate 'string body ",")))
                             (setf first2 nil)
-                            (setf body (concatenate 'string body "\"" (stringify-atom (car feature)) "\":"))
+                            (if (equal (symbol-name (car feature)) "HASH")
+                              (progn
+                                (setf body (concatenate 'string body "\"#" (stringify-atom (second feature)) "\":"))
+                                (setf feature-type (cdr (assoc (second feature) ft)))
+                                (setf feature (list (second feature) (third feature)))
+                                (format t "~A~%" feature)
+                                (format t "~A~%" feature-type))
+                              (setf body (concatenate 'string body "\"" (stringify-atom (car feature)) "\":")))
                             (cond
                              ((or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
                               (setf body (concatenate 'string body (list-to-json (car (cdr feature))))))
@@ -496,10 +504,16 @@ Other strings are wrapped in extra quotes."
                  (loop for feature in (comprehension-lock unit)
                        for feature-type = (cdr (assoc (car feature) ft))
                        do (progn
+                            (format t "~A~%" feature)
                             (unless first2
                               (setf body (concatenate 'string body ",")))
                             (setf first2 nil)
-                            (setf body (concatenate 'string body "\"" (stringify-atom (car feature)) "\":"))
+                            (if (equal (symbol-name (car feature)) "HASH")
+                              (progn
+                                (setf body (concatenate 'string body "\"#" (stringify-atom (second feature)) "\":"))
+                                (setf feature-type (cdr (assoc (second feature) ft)))
+                                (setf feature (third feature)))
+                              (setf body (concatenate 'string body "\"" (stringify-atom (car feature)) "\":")))
                             (cond
                              ((or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
                               (setf body (concatenate 'string body (list-to-json (car (cdr feature))))))
