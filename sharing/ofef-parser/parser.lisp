@@ -444,15 +444,11 @@ Other strings are wrapped in extra quotes."
                (setf body (concatenate 'string body "\"" (stringify-atom (name unit)) "\","))
                (setf body (concatenate 'string body "{"))
                ;formulation lock
-               (if (and (equal (symbol-name (first (first (formulation-lock unit)))) "HASH") (equal (symbol-name (second (first (formulation-lock unit)))) "MEANING"))
-                 (progn
-                   (setf body (concatenate 'string body "\"#meaning\":"))
-                   (setf body (concatenate 'string body (alist->json-list (third (first (formulation-lock unit)))))))
-                 (let ((first2 t))
-                   (loop for feature in (formulation-lock unit)
+               
+               (let ((first2 t))
+                 (loop for feature in (formulation-lock unit)
                        for feature-type = (cdr (assoc (car feature) ft))
                        do (progn
-                            
                             (unless first2
                               (setf body (concatenate 'string body ",")))
                             (setf first2 nil)
@@ -460,9 +456,7 @@ Other strings are wrapped in extra quotes."
                               (progn
                                 (setf body (concatenate 'string body "\"#" (stringify-atom (second feature)) "\":"))
                                 (setf feature-type (cdr (assoc (second feature) ft)))
-                                (setf feature (list (second feature) (third feature)))
-                                (format t "~A~%" feature)
-                                (format t "~A~%" feature-type))
+                                (setf feature (list (second feature) (third feature))))
                               (setf body (concatenate 'string body "\"" (stringify-atom (car feature)) "\":")))
                             (cond
                              ((or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
@@ -492,15 +486,12 @@ Other strings are wrapped in extra quotes."
                                   (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))
                                   ;; mixed or unexpected structure
                                   ))))
-                          )))))
+                          ))))
                (setf body (concatenate 'string body "},"))
                (setf body (concatenate 'string body "{"))
                ;comprehension lock
-               (if (and (equal (symbol-name (first (first (comprehension-lock unit)))) "HASH") (equal (symbol-name (second (first (comprehension-lock unit)))) "FORM"))
-                 (progn
-                   (setf body (concatenate 'string body "\"#form\":"))
-                   (setf body (concatenate 'string body (list-of-lists->json-list (third (first (comprehension-lock unit)))))))
-                 (let ((first2 t))
+
+               (let ((first2 t))
                  (loop for feature in (comprehension-lock unit)
                        for feature-type = (cdr (assoc (car feature) ft))
                        do (progn
@@ -512,7 +503,7 @@ Other strings are wrapped in extra quotes."
                               (progn
                                 (setf body (concatenate 'string body "\"#" (stringify-atom (second feature)) "\":"))
                                 (setf feature-type (cdr (assoc (second feature) ft)))
-                                (setf feature (third feature)))
+                                (setf feature (list (second feature) (third feature))))
                               (setf body (concatenate 'string body "\"" (stringify-atom (car feature)) "\":")))
                             (cond
                              ((or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
@@ -542,7 +533,7 @@ Other strings are wrapped in extra quotes."
                                   (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))
                                   ;; mixed or unexpected structure
                                   ))))
-                          )))))     
+                          ))))     
                (setf body (concatenate 'string body "}"))
                
                (setf body (concatenate 'string body "]"))
