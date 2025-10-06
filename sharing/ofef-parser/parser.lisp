@@ -344,28 +344,38 @@ Atomic string values that are numbers are output as JSON numbers."
 
 
 (defun list-of-lists->json-list (lol)
-  "Convert a list of lists to a JSON array of arrays string.
-Wrap elements that are strings in extra quotes."
-  (with-output-to-string (out)
-    (write-char #\[ out)
-    (let ((first t))
-      (dolist (sublist lol)
-        (unless first (write-string ", " out))
-        (setf first nil)
-        (write-char #\[ out)
-        (let ((subfirst t))
-          (dolist (elem sublist)
-            (unless subfirst (write-string ", " out))
-            (setf subfirst nil)
-            (cond
-              ((stringp elem)
-               (format out "\"\\\"~A\\\"\"" elem))  ; wrap string in extra quotes
-              ((symbolp elem)
-               (format out "\"~A\"" (string-downcase (symbol-name elem))))
-              (t
-               (format out "\"~A\"" elem)))))
-        (write-char #\] out)))
-    (write-char #\] out)))
+  "Convert a list of lists to a JSON array-of-arrays string.
+If an element is a stringified number like \"25\" or \"3.14\", it is output as a JSON number.
+Other strings are wrapped in extra quotes."
+  (labels ((json-element (elem)
+             (cond
+               ((eq elem t) "true")
+               ((null elem) "false")
+               ((numberp elem) (princ-to-string elem))
+               ((stringp elem)
+                ;; check if string represents an integer
+                (let ((int-val (ignore-errors (parse-integer elem :junk-allowed t)))
+                      (float-val (ignore-errors (parse-float elem :junk-allowed t))))
+                  (cond
+                    ((and int-val (string= (princ-to-string int-val) elem)) (princ-to-string int-val))
+                    ((and float-val (string= (princ-to-string float-val) elem)) (princ-to-string float-val))
+                    (t (format nil "\"\\\"~A\\\"\"" elem)))))
+               ((symbolp elem) (format nil "\"~A\"" (string-downcase (symbol-name elem))))
+               (t (format nil "\"~A\"" elem)))))
+    (with-output-to-string (out)
+      (write-char #\[ out)
+      (let ((first t))
+        (dolist (sublist lol)
+          (unless first (write-string ", " out))
+          (setf first nil)
+          (write-char #\[ out)
+          (let ((subfirst t))
+            (dolist (elem sublist)
+              (unless subfirst (write-string ", " out))
+              (setf subfirst nil)
+              (write-string (json-element elem) out)))
+          (write-char #\] out)))
+      (write-char #\] out))))
 
 (defun contributing->json (contrib ft)
   (let ((body "[")
@@ -386,8 +396,13 @@ Wrap elements that are strings in extra quotes."
                               (setf body (concatenate 'string body ",")))
                             (setf first2 nil)
                             (setf body (concatenate 'string body "\"" (stringify-atom (car feature)) "\":"))
-                            (if (or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
-                              (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))
+                            (cond
+                             ((or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
+                              (setf body (concatenate 'string body (list-to-json (car (cdr feature))))))
+                             ((equal (symbol-name (car feature-type)) "SET-OF-PREDICATES")
+                              (setf body (concatenate 'string body (list-of-lists->json-list (car (cdr feature)))))
+                              )
+                             (t
                               (let ((value (cdr feature)))
                                 (when (and (listp value) (= (length value) 1))
                                   (setf value (first value)))
@@ -398,7 +413,7 @@ Wrap elements that are strings in extra quotes."
                                   ;(setf body (concatenate 'string body "\"" (stringify-atom value) "\""))
                                   (setf body (concatenate 'string body (json-atomic-value value)))
                                   )
-
+                                 ;; Case 3: several sublists
                                  ((and (listp value)
                                        (every #'listp value))
                                   ;; nested sublists
@@ -407,7 +422,9 @@ Wrap elements that are strings in extra quotes."
                                  
                                  (t
                                   ;; mixed or unexpected structure
+                                  (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))
                                   ))))
+                          )
                           )))
                (setf body (concatenate 'string body "}"))
                (setf body (concatenate 'string body "]"))
@@ -439,8 +456,13 @@ Wrap elements that are strings in extra quotes."
                               (setf body (concatenate 'string body ",")))
                             (setf first2 nil)
                             (setf body (concatenate 'string body "\"" (stringify-atom (car feature)) "\":"))
-                            (if (or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
-                              (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))
+                            (cond
+                             ((or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
+                              (setf body (concatenate 'string body (list-to-json (car (cdr feature))))))
+                             ((equal (symbol-name (car feature-type)) "SET-OF-PREDICATES")
+                              (setf body (concatenate 'string body (list-of-lists->json-list (car (cdr feature)))))
+                              )
+                             (t
                               (let ((value (cdr feature)))
                                 (when (and (listp value) (= (length value) 1))
                                   (setf value (first value)))
@@ -459,9 +481,10 @@ Wrap elements that are strings in extra quotes."
                                   )
                                  
                                  (t
+                                  (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))
                                   ;; mixed or unexpected structure
                                   ))))
-                          ))))
+                          )))))
                (setf body (concatenate 'string body "},"))
                (setf body (concatenate 'string body "{"))
                ;comprehension lock
@@ -477,8 +500,13 @@ Wrap elements that are strings in extra quotes."
                               (setf body (concatenate 'string body ",")))
                             (setf first2 nil)
                             (setf body (concatenate 'string body "\"" (stringify-atom (car feature)) "\":"))
-                            (if (or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
-                              (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))
+                            (cond
+                             ((or (equal (symbol-name (car feature-type)) "SET") (equal (symbol-name (car feature-type)) "SEQUENCE"))
+                              (setf body (concatenate 'string body (list-to-json (car (cdr feature))))))
+                             ((equal (symbol-name (car feature-type)) "SET-OF-PREDICATES")
+                              (setf body (concatenate 'string body (list-of-lists->json-list (car (cdr feature)))))
+                              )
+                             (t
                               (let ((value (cdr feature)))
                                 (when (and (listp value) (= (length value) 1))
                                   (setf value (first value)))
@@ -486,9 +514,9 @@ Wrap elements that are strings in extra quotes."
                                  ;; Case 1: single atom
                                  ((atom value)
                                   ;; atomic value
-                                  (setf body (concatenate 'string body "\"" (stringify-atom value) "\""))
+                                  ;(setf body (concatenate 'string body "\"" (stringify-atom value) "\""))
+                                  (setf body (concatenate 'string body (json-atomic-value value)))
                                   )
-     
                                  ;; Case 3: several sublists
                                  ((and (listp value)
                                        (every #'listp value))
@@ -497,9 +525,10 @@ Wrap elements that are strings in extra quotes."
                                   )
                                  
                                  (t
+                                  (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))
                                   ;; mixed or unexpected structure
                                   ))))
-                          ))))               
+                          )))))     
                (setf body (concatenate 'string body "}"))
                
                (setf body (concatenate 'string body "]"))
