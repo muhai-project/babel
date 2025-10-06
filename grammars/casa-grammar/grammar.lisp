@@ -6,7 +6,7 @@
 
 ;; Constructions: YES-NO-QUESTION, MODAL-CXN, MONOTRANSITIVE-CXN, OR-COORDINATION, NP CXNS (3)
 
-(defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
+;;(defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
 ;;(activate-monitor trace-fcg)
 
 (def-fcg-constructions casa-grammar
@@ -428,16 +428,21 @@
 
 ;; It's here where she has done groundbreaking neuroimaging research (COCA-2014-SPOK)
 
-'(h / here
+#|'(h / here
     :arg2-of (b / be-located-at-91
                 :arg1 (r / research.01
                          :arg1 (n / neuroimaging)
                          :mod (g / groundbreaking)
-                         :arg0 (s / she))))
+                         :arg0 (s / she))))|#
 
 ;;((FCG::HERE FCG::H) (FCG::BE-LOCATED-AT-91 UTILS:B) (FCG::RESEARCH.01 FCG::R) (FCG::NEUROIMAGING FCG::N) (FCG::GROUNDBREAKING FCG::G) (FCG::SHE FCG::S) (:ARG2-OF FCG::H UTILS:B) (:ARG1 UTILS:B FCG::R) (:ARG1 FCG::R FCG::N) (:MOD FCG::R FCG::G) (:ARG0 FCG::R FCG::S))
 
 
 ;;(comprehend-all "it's here where she has done groundbreaking neuroimaging research")
 
-;(ql:quickload :amr)
+
+
+
+
+;; (ql:quickload :ofef-parser)
+;; (ofef-parser:fcg->ofef *fcg-constructions*)
