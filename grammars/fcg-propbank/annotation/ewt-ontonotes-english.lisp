@@ -8,6 +8,10 @@
 
 ;; (ql:quickload :fcg-propbank)
 
+;; Bind *babel-corpora* if not yet bound.
+(unless (boundp '*babel-corpora*)
+  (warn "*babel-corpora* not bound.")
+  (defparameter *babel-corpora* "no-corpus-path-provided"))
 
 #|
 ;; 1. From ConLL files to corpus object (without augmentations)
@@ -69,10 +73,6 @@
 |#
 
 
-;; Bind *babel-corpora* if not yet bound.
-(unless (boundp '*babel-corpora*)
-  (warn "*babel-corpora* not bound.")
-  (defparameter *babel-corpora* "no-corpus-path-provided"))
 
 (defparameter *ontonotes-annotations-directory* (merge-pathnames
                                                  (make-pathname :directory (cons :relative '("Frames\ and\ Propbank" "propbank-release" "data")))
@@ -82,18 +82,18 @@
                                            (make-pathname :directory (cons :relative '("Frames\ and\ Propbank" "propbank-release" "data" "google" "ewt")))
                                            *babel-corpora*))
 
-;; Global variables where propbank-annotated-corpus will be loaded.
-(defparameter *ontonotes-propbank-annotated-corpus* "Ontonotes annotations will be stored here.")
-(defparameter *ewt-propbank-annotated-corpus* "Ewt annotations will be stored here.")
+;; Global variables where propbank annotations will be loaded.
+(defparameter *ontonotes-annotations* "Ontonotes annotations will be stored here.")
+(defparameter *ewt-annotations* "Ewt annotations will be stored here.")
 
 ;; File where propbank annotations will be stored in binary format
-(defparameter *ontonotes-propbank-annotated-corpus-file* (merge-pathnames (make-pathname :directory (cons :relative '("Frames\ and\ Propbank" "propbank-annotations"))
-                                                                                   :name "ontonotes-propbank-annotated-corpus"
+(defparameter *ontonotes-annotations-storage-file* (merge-pathnames (make-pathname :directory (cons :relative '("Frames\ and\ Propbank" "propbank-annotations"))
+                                                                                   :name "ontonotes-annotations"
                                                                                    :type #+lispworks "lw.store" #+ccl "ccl.store" #+sbcl "sbcl.store")
                                                                     *babel-corpora*))
 
-(defparameter *ewt-propbank-annotated-corpus-file* (merge-pathnames (make-pathname :directory (cons :relative '("Frames\ and\ Propbank" "propbank-annotations"))
-                                                                                   :name "ewt-propbank-annotated-corpus"
+(defparameter *ewt-annotations-storage-file* (merge-pathnames (make-pathname :directory (cons :relative '("Frames\ and\ Propbank" "propbank-annotations"))
+                                                                                   :name "ewt-annotations"
                                                                                    :type #+lispworks "lw.store" #+ccl "ccl.store" #+sbcl "sbcl.store")
                                                                     *babel-corpora*))
 
@@ -137,8 +137,8 @@
 
 (defun get-corpus-annotations-storage-file (corpus-name)
   (case corpus-name
-    (ewt *ewt-propbank-annotated-corpus-file*)
-    (ontonotes *ontonotes-propbank-annotated-corpus-file*)))
+    (ewt *ewt-annotations-storage-file*)
+    (ontonotes *ontonotes-annotations-storage-file*)))
 
 
 (defun load-propbank-annotations-from-files (corpus-name)

@@ -54,7 +54,7 @@
 ;; ############################################################################
 ;; I. Basic abstractions
 
-(export '(? +fail+ fail? +no-bindings+ no-bindings))
+(export '(? +fail+ fail? +no-bindings+ no-bindings unify-objects))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant +fail+ nil))
@@ -411,6 +411,24 @@ occurs in x."
         ((unify-equal x y) bindings)
 	(t (values +fail+ x y))))
 
+(defgeneric unify-objects (x y bindings &key cxn-inventory)
+  (:documentation "Unifies two objects"))
+
+(defmethod unify-objects ((x standard-object) (y standard-object) bindings-list &key cxn-inventory)
+  "Standard method for unifying object: unify slot values."
+  (warn (format nil "Using standard method for unifying objects. You probably want to implement a specific one
+for objects of class ~a and class ~a. This method will hang if your objects have cyclic dependencies." (class-of x) (class-of y)))
+  (if (eq (class-of x) (class-of y))
+    (loop with slot-names =  (mapcar #'closer-mop:slot-definition-name (closer-mop:class-slots (class-of x)))
+          with slot-values-x = (loop for slot-name in slot-names collect (slot-value x slot-name))
+          with slot-values-y = (loop for slot-name in slot-names collect (slot-value y slot-name))
+          for bindings in bindings-list
+          append 
+            (unify (rest slot-values-x) (rest slot-values-y)
+                   (unify (first slot-values-x) (first slot-values-y) (list bindings) :cxn-inventory cxn-inventory)
+                   :cxn-inventory cxn-inventory))
+    +fail+))
+
 (defun unify-simple (x y &optional (bindings +no-bindings+) &key cxn-inventory)
   (cond ((and (consp x) (unify-fn (first x)))
 	 (simple-unify-special x y bindings :cxn-inventory cxn-inventory))
@@ -420,6 +438,8 @@ occurs in x."
 	 (unify-simple (rest x) (rest y)
 		       (unify-simple (first x) (first y) bindings)
                        :cxn-inventory cxn-inventory))
+        ((or (closer-mop:subclassp (class-of x) 'standard-object) (closer-mop:subclassp (class-of y) 'standard-object))
+         (unify-objects x y bindings :cxn-inventory cxn-inventory))
 	(t (unify-atom x y bindings :cxn-inventory cxn-inventory))))
 
 
@@ -446,13 +466,16 @@ occurs in x."
 	   (unify-special y x bindings-list :cxn-inventory cxn-inventory))
 	  ((and (consp x) (consp y))
 	   (loop for bindings in bindings-list append 
-                 (unify (rest x) (rest y) 
-                        (unify (first x) (first y) (list bindings) :cxn-inventory cxn-inventory)
-                        :cxn-inventory cxn-inventory)))
+                   (unify (rest x) (rest y) 
+                          (unify (first x) (first y) (list bindings) :cxn-inventory cxn-inventory)
+                          :cxn-inventory cxn-inventory)))
+          ((or (closer-mop:subclassp (class-of x) 'standard-object)
+               (closer-mop:subclassp (class-of y) 'standard-object))
+           (unify-objects x y bindings-list :cxn-inventory cxn-inventory))
 	  (t (loop for bindings in bindings-list
-                for try = (unify-atom x y bindings :cxn-inventory cxn-inventory)
-                unless (fail? try) 
-                collect try)))))
+                   for try = (unify-atom x y bindings :cxn-inventory cxn-inventory)
+                   unless (fail? try) 
+                     collect try)))))
 
 ;; ############################################################################
 ;; V. Merging

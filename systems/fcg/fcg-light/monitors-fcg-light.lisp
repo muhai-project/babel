@@ -14,7 +14,7 @@
 ;;=========================================================================
 (in-package :fcg)
 
-(export '(trace-fcg))
+(export '(trace-fcg trace-comprehension-result))
 
 ;; ############################################################
 ;; trace-fcg
@@ -152,7 +152,8 @@
     (interactive-web-interface-header))
   (add-element `((hr)))
   (add-element `((h2) "Formulating&#160;"))
-  (add-element (if (get-configuration construction-inventory :draw-meaning-as-network)
+  (add-element (if (and (get-configuration construction-inventory :draw-meaning-as-network)
+                        (listp (first meaning)))
                  (predicate-network->svg meaning :only-variables nil)
                  (html-pprint meaning))))
 
@@ -171,7 +172,8 @@
                         (if (typep n 'number)
                           (format nil "max ~a solutions" n)
                           "all solutions"))))
-  (add-element (if (get-configuration construction-inventory :draw-meaning-as-network)
+  (add-element (if (and (get-configuration construction-inventory :draw-meaning-as-network)
+                        (listp (first meaning)))
                  (if (get-configuration (visualization-configuration construction-inventory) :show-wiki-links-in-predicate-networks )
                    (predicate-network-with-wiki-links->svg meaning :only-variables nil)
                    (predicate-network->svg meaning :only-variables nil))
@@ -196,7 +198,8 @@
 
 (define-event-handler (trace-fcg parse-finished)
   (add-element `((h3 :style "margin-bottom:3px;") "Meaning:"))
-  (add-element (if (get-configuration construction-inventory :draw-meaning-as-network)
+  (add-element (if (and (get-configuration construction-inventory :draw-meaning-as-network)
+                        (listp (first meaning)))
                  (if (get-configuration (visualization-configuration construction-inventory) :show-wiki-links-in-predicate-networks )
                    (predicate-network-with-wiki-links->svg meaning)
                    (predicate-network->svg meaning))
@@ -219,13 +222,53 @@
   (loop for meaning in meanings
         for i from 1
         do
-        (add-element `((h4) ,(format nil "meaning ~a " i)))
-        (add-element (if (get-configuration construction-inventory :draw-meaning-as-network)
-                       (if (get-configuration (visualization-configuration construction-inventory) :show-wiki-links-in-predicate-networks )
-                         (predicate-network-with-wiki-links->svg meaning)
-                         (predicate-network->svg meaning))
-                       (html-pprint meaning))))
+          (add-element `((h4) ,(format nil "meaning ~a " i)))
+          (add-element (if (and (get-configuration construction-inventory :draw-meaning-as-network)
+                                (listp (first meaning)))
+                         (if (get-configuration (visualization-configuration construction-inventory) :show-wiki-links-in-predicate-networks )
+                           (predicate-network-with-wiki-links->svg meaning)
+                           (predicate-network->svg meaning))
+                         (html-pprint meaning))))
   (add-element `((p) " ")))
+
+
+;; ############################################################
+;; trace-comprehension-result
+;; ############################################################
+
+(define-monitor trace-comprehension-result 
+    :documentation "Traces the result of comprehension in the browser (constructional dependencies + meaning representation.")
+
+(define-event-handler (trace-comprehension-result parse-started)
+  (add-element `((hr)))
+  (add-element `((h2) ,(format nil "Comprehending &quot;~{~a~^ ~}&quot;" utterance))))
+
+(define-event-handler (trace-comprehension-result cip-finished)
+  (when (eq (direction cip) '<-)
+    (add-dependency-graph-and-meaning solution cip)))
+
+(defun add-dependency-graph-and-meaning (solution-node cip)
+  (let ((cxn-inventory (construction-inventory solution-node)))
+    (add-element `((hr)))
+    (add-element
+    `((div)
+      ((table :class "two-col")
+       ((tbody)
+        ,(if (and (program-installed-p "dot") (get-configuration (visualization-configuration cxn-inventory) :show-constructional-dependencies))
+           `((tr)
+             ((td) ((h3) "Constructional dependency graph:"))
+             ((td) ((h3) "Resulting meaning representation:"))))
+           
+           ((tr)
+             ((td) ,(make-html (analyse-solution solution-node '<-)
+                               :configuration (configuration cxn-inventory)))
+             ((td) ,(if (get-configuration cxn-inventory :draw-meaning-as-network)
+                      (predicate-network->svg (extract-meanings (left-pole-structure (car-resulting-cfs (cipn-car solution-node)))))
+                      (html-pprint (extract-meanings (left-pole-structure (car-resulting-cfs (cipn-car solution-node)))))))))))))
+    (add-element `((p) " ")))
+    
+
+
 
 ;; ############################################################
 ;; trace-fcg-search-process
@@ -486,7 +529,8 @@
     (interactive-web-interface-header))
   (add-element `((hr)))
   (add-element `((h2) "Formulating&#160;"))
-  (add-element (if (get-configuration construction-inventory :draw-meaning-as-network)
+  (add-element (if (and (get-configuration construction-inventory :draw-meaning-as-network)
+                        (listp (first meaning)))
                  (predicate-network->svg meaning :only-variables nil)
                  (html-pprint meaning))))
 
@@ -505,7 +549,8 @@
                         (if (typep n 'number)
                           (format nil "max ~a solutions" n)
                           "all solutions"))))
-  (add-element (if (get-configuration construction-inventory :draw-meaning-as-network)
+  (add-element (if (and (get-configuration construction-inventory :draw-meaning-as-network)
+                        (listp (first meaning)))
                  (predicate-network->svg meaning :only-variables nil)
                  (html-pprint meaning))))
      
@@ -522,7 +567,8 @@
 
 (define-event-handler (trace-fcg-debugging parse-finished)
   (add-element `((h3 :style "margin-bottom:3px;") "Meaning:"))
-  (add-element (if (get-configuration construction-inventory :draw-meaning-as-network)
+  (add-element (if (and (get-configuration construction-inventory :draw-meaning-as-network)
+                        (listp (first meaning)))
                  (predicate-network->svg meaning)
                  (html-pprint meaning)))
   
@@ -545,11 +591,11 @@
   (loop for meaning in meanings
         for i from 1
         do
-        (add-element `((h4) ,(format nil "meaning ~a " i)))
-        (add-element (if (get-configuration construction-inventory :draw-meaning-as-network)
-                       (predicate-network->svg meaning)
-                       (html-pprint meaning))))
-  )
+          (add-element `((h4) ,(format nil "meaning ~a " i)))
+          (add-element (if (and (get-configuration construction-inventory :draw-meaning-as-network)
+                                (listp (first meaning)))
+                         (predicate-network->svg meaning)
+                         (html-pprint meaning)))))
 
 
 

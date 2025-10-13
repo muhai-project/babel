@@ -87,14 +87,22 @@ left in the root unit's form predicates (comprehension only)."
     (set-data (goal-test-data node) 'sequence-in-root sequence-in-root)
     (not sequence-in-root)))
 
-(defmethod cip-goal-test ((node cip-node) (mode (eql :no-strings-in-root)))
+
+(defmethod cip-goal-test ((node cip-node) (mode (eql :only-empty-sequences-in-root)))
   "The node is a valid solution when there is are no string features
 left in the root unit's form predicates (comprehension only)."
-  (let ((strings-in-root (get-strings (assoc 'root
-                                       (left-pole-structure
-                                        (car-resulting-cfs (cipn-car node)))))))
-    (set-data (goal-test-data node) 'strings-in-root strings-in-root)
-    (not strings-in-root)))
+  (let* ((sequence-in-root (get-sequences (assoc 'root
+                                               (left-pole-structure
+                                                (car-resulting-cfs (cipn-car node))))))
+         (non-emtpy-sequences (loop for sequence in sequence-in-root
+                                    unless (string= sequence " ")
+                                      collect sequence)))
+    (set-data (goal-test-data node) 'non-emtpy-sequences non-emtpy-sequences)
+
+    (if non-emtpy-sequences
+      nil
+      t)))
+
 
 (defmethod cip-goal-test ((node cip-node) (mode (eql :fcg-light-no-strings-in-root)))
   "Calls :no-strings-in-root goal test (use this instead)"

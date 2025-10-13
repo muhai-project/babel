@@ -76,6 +76,9 @@
 
 (defun make-json-clos-slot (slot thing objects-processed)
   (let ((objects-processed-extended (cons thing objects-processed)))
-    (values (cons (make-json (make-kw (clos:slot-definition-name slot)) objects-processed-extended)
-                  (make-json (slot-value thing (clos:slot-definition-name slot)) objects-processed-extended))
-            objects-processed-extended)))
+    (values
+     #+lispworks (cons (make-json (make-kw (clos:slot-definition-name slot)) objects-processed-extended)
+                       (make-json (slot-value thing (clos:slot-definition-name slot)) objects-processed-extended))
+     #+sbcl (cons (make-json (make-kw (sb-mop:slot-definition-name slot)) objects-processed-extended)
+                  (make-json (slot-value thing (sb-mop:slot-definition-name slot)) objects-processed-extended))
+     objects-processed-extended)))

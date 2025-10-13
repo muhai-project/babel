@@ -300,3 +300,26 @@
    collect variable into vars ;; no meets for gestures
    else
    collect `(gesture ,variable ,string)))
+
+;; ############################################################################
+;; Initial structures for root-mode
+;; ############################################################################
+
+(defmethod create-initial-structure ((meaning list) (mode t)  &key &allow-other-keys)
+  (warn "Deprecated functions that will be removed in a next release - adapt or shout loud.")
+  (make-instance 'coupled-feature-structure
+                 :left-pole `((root
+			       (referent)
+			       (meaning ,meaning)
+			       (sem-cat nil)))
+		 :right-pole '((root
+				(form nil)
+				(syn-cat nil)))
+		 :left-pole-domain 'sem
+		 :right-pole-domain 'syn))
+
+(defmethod create-initial-structure ((meaning list)
+                                     (mode (eql :root-mode))
+                                      &key &allow-other-keys)
+  (warn "Deprecated functions that will be removed in a next release - adapt or shout loud.")
+  (create-initial-structure meaning t))

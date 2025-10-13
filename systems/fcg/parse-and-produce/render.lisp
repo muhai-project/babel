@@ -915,3 +915,12 @@ branching node."
 (defmethod render ((cfs coupled-feature-structure) (mode (eql :render-with-scope)) &key node &allow-other-keys)
   (render (left-pole-structure cfs) mode :node node))
 
+
+
+;; Render raw string ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod render ((transient-structure coupled-feature-structure) (mode (eql :render-raw)) &key &allow-other-keys)
+  "Puts the input string as such under the form feature in the root."
+  (extract-forms (left-pole-structure transient-structure)))
+

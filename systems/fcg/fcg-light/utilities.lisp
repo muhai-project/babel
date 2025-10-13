@@ -59,12 +59,3 @@
     (when original-cxn-set
       (setf (original-cxn-set cxn-set) original-cxn-set))
     cxn-set))
-
-;;function used in the html-fcg-light.lisp
-(defun get-properly-binding-name (binding)
-  (let ((str-binding (replace-all (replace-all (write-to-string binding) "FCG::" "") "#:" "")))
-  (subseq str-binding
-          (if (search "?" str-binding)
-            (search "?" str-binding)
-            0)
-          (search "-" str-binding :from-end t))))

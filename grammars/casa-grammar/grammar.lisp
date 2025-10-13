@@ -2,29 +2,31 @@
 ;(ql:quickload :casa)
 
 ;; Would you like tea or coffee?
-
-#|(amr::penman->predicates '(l / like-01
-                               :MOD (d/ deontic)
-                               :ARG0 (y / you)
-                               :ARG1 (a / amr-choice
-                                        :op1 (t / tea)
-                                        :op2 (c / coffee))))|#
-
-;((FCG::LIKE-01 FCG::L) (:MOD L D) (DEONTIC D) (FCG::YOU UTILS:Y) (FCG::AMR-CHOICE UTILS:A) (FCG::TEA T) (FCG::COFFEE FCG::C) (:ARG0 FCG::L UTILS:Y) (:ARG1 FCG::L UTILS:A) (:OP1 UTILS:A T) (:OP2 UTILS:A FCG::C))
-
+;; Shall I ring the police?
 
 ;; Constructions: YES-NO-QUESTION, MODAL-CXN, MONOTRANSITIVE-CXN, OR-COORDINATION, NP CXNS (3)
 
+;;(defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
+;;(activate-monitor trace-fcg)
+
 (def-fcg-constructions casa-grammar
-  :feature-types ((form set-of-predicates :handle-regex-sequences)
+  :feature-types ((form set-of-predicates)
+                  (span sequence)
+                  (syn-class set)
+                  (constituents set)
+                  (dependents set)
+                  (word-order set-of-predicates)
                   (meaning set-of-predicates)
                   (subunits set)
                   (form-args sequence)
                   (meaning-args sequence)
-                  (footprints set))
+                  (footprints set)
+                  (syntactic-function set))
+  :hierarchy-features (constituents dependents)
+
   :fcg-configurations (
                        ;; --- (DE)RENDER ---
-                       (:de-render-mode . :de-render-sequence-predicates)
+                       (:de-render-mode . :de-render-constituents-dependents)
                        (:render-mode . :render-sequences)
 
                        ;; --- HEURISTICS ---
@@ -45,196 +47,402 @@
                        ;; goal tests for comprehension
                        (:parse-goal-tests
                         :no-applicable-cxns ;; succeeds if node is fully expanded and no cxns could apply to its children
-                        :connected-semantic-network ;; succeeds if the semantic network is fully connected
-                        )
-                       ;; goal tests for formulation
-                       (:production-goal-tests
-                        :no-applicable-cxns ;; succeeds if node is fully expanded and no cxns could apply to its children
-                        :no-meaning-in-root ;; succeeds if no meaning predicates remain in root
-                        ))
+                        :connected-semantic-network))) ;; succeeds if the semantic network is fully connected)))
 
+
+;;(comprehend-all "the two of them")
+;;(comprehend-all "the four of us")
+
+;;(comprehend "shall I ring the police?")
+;;(comprehend "would you like tea or coffee?")
+
+
+(def-fcg-cxn two-cxn
+             (<-
+              (?two-unit
+               (meaning ((:quant ?x 2)))
+               (lex-class cardinal)
+               (meaning-args (?x))
+               --
+               (string "two"))))
+
+(def-fcg-cxn four-cxn
+             (<-
+              (?four-unit
+               (meaning ((:quant ?x 4)))
+               (lex-class cardinal)
+               (meaning-args (?x))
+               --
+               (string "four"))))
+
+(def-fcg-cxn them-cxn
+             (<-
+              (?them-unit
+               (meaning ((they ?t)))
+               (lex-class pers-pronoun)
+               (meaning-args (?t))
+               (agreement (person 3)
+                          (number pl)
+                          (case accusative))
+               --
+               (string "them"))))
+
+
+(def-fcg-cxn us-cxn
+             (<-
+              (?us-unit
+               (meaning ((we ?w)))
+               (lex-class pers-pronoun)
+               (meaning-args (?w))
+               (agreement (person 1)
+                          (number pl)
+                          (case accusative))
+               --
+               (string "us"))))
+             
+(def-fcg-cxn the-CARD-of-PRON-cxn
+             (<-
+              (?the-unit
+               --
+               (string "the"))
+              (?cardinal-unit
+               (meaning ((group ?g)))
+               (meaning-args (?g))
+               (agreement (number pl)
+                          (person ?person))
+               --
+               (lex-class cardinal))
+              (?of-unit
+               --
+               (string "of"))
+              (?pers-pronoun-unit
+               (meaning-args (?g))
+               --
+               (lex-class pers-pronoun)
+               (agreement (person ?person)
+                          (number pl)
+                          (case accusative)))))
+
+(def-fcg-cxn ring-cxn
+             (<-
+              (?ring-unit
+               (meaning ((ring.04 ?r)))
+               (meaning-args (?r))
+               (sem-roles (arg0 ?caller)
+                          (arg1 ?called))
+               (lex-class base-verb)
+               (syntactic-form verb)
+               --
+               (string "ring"))))
+
+(def-fcg-cxn I-cxn
+             (<-
+              (?i-unit
+               (meaning ((i ?i)))
+               (lex-class pers-pronoun)
+               (syntactic-form np)
+               (meaning-args (?i))
+               (agreement (person 1)
+                          (number sg)
+                          (case nominative))
+               --
+               (string "I"))))
+
+(def-fcg-cxn shall-cxn
+             (<-
+              (?shall-unit
+               (meaning ((recommend.01 ?r)
+                         (:arg1 ?r ?recommendation)))
+               (meaning-args (?r))
+               (sem-roles (arg1 ?recommendation))
+               (lex-class modal-verb)
+               (syntactic-function (pred-op))
+               --
+               (string "shall"))))
+
+(def-fcg-cxn modal-cxn
+             (<-
+              (?modal-verb
+               (meaning-args (?m))
+               (sem-roles (arg1 ?event))
+               --
+               (lex-class modal-verb))
+              (?base-verb
+               (meaning-args (?event))
+               --
+               (lex-class base-verb))))
+
+(def-fcg-cxn the-police-cxn
+             (<-
+              (?the-police-unit
+               (meaning ((police ?p)))
+               (syntactic-form np)
+               (meaning-args (?p))
+               --
+               (string "the police"))))
+         
+(def-fcg-cxn yes-no-question-cxn
+             (<-
+              (?sentence
+               (meaning ((:polarity ?pred amr-unknown)))
+               --
+               (string "?"))
+              (?first-slot
+               --
+               (syntactic-function (pred-op)))
+              (?second-slot
+               --
+               (syntactic-form np)
+               (syntactic-function (subject)))
+              (?third-slot
+               --
+               (meaning-args (?pred))
+               (syntactic-function (pred-rest))))
+             :description "Asking a question that can be answered by yes or no.")
+ 
+
+(def-fcg-cxn monotransitive-cxn
+             ((?vp-parent
+               (meaning-args (?event))
+               (syntactic-function (pred-rest)))
+              (?slot-2-predicate
+               (footprints (arg-structure-cxn)))
+              <-
+              (?slot-1-argument
+               (meaning-args (?agent))
+               (syntactic-function (potential subject))
+               --
+               (syntactic-form np))
+              (?slot-2-predicate
+               (sem-roles (arg0 ?agent)
+                          (arg1 ?undergoer))
+               (meaning ((:arg0 ?event ?agent)
+                         (:arg1 ?event ?undergoer)))
+               --
+               (footprints (not arg-structure-cxn))
+               (parent ?vp-parent)
+               (meaning-args (?event))
+               (syntactic-form verb))
+              (?slot-3-argument
+               (meaning-args (?undergoer))
+               (syntactic-function (unit in predicate))
+               --
+               (syntactic-form np))
+              :disable-automatic-footprints t))
+
+(def-fcg-cxn you-cxn
+             (<-
+              (?you-unit
+               (meaning ((you ?y)))
+               (lex-class pers-pronoun)
+               (syntactic-form np)
+               (meaning-args (?y))
+               (agreement (person 2)
+                          (number ?numb)
+                          (case nominative))
+               --
+               (string "you"))))
 
 (def-fcg-cxn coffee-cxn
-             ((?coffee-unit
-               (referent ?c)
-               (category noun)
-               (form-args (?start ?end)))
-              <-
+             (<-
               (?coffee-unit
-               (HASH meaning ((coffee ?c)))
+               (meaning-args (?c))
+               (lex-class noun)
+               (meaning ((coffee ?c)))
                --
-               (HASH form ((sequence "coffee" ?start ?end))))))
+               (string "coffee"))))
 
 (def-fcg-cxn tea-cxn
-             ((?tea-unit
-               (referent ?c)
-               (category noun)
-               (form-args (?start ?end)))
-              <-
+             (<-
               (?tea-unit
-               (HASH meaning ((tea ?c)))
+               (meaning-args (?t))
+               (lex-class noun)
+               (meaning ((tea ?t)))
                --
-               (HASH form ((sequence "tea" ?start ?end))))))
+               (string "tea"))))
+
 
 (def-fcg-cxn or-coordination-cxn
              ((?or-unit
-               (referent ?a)
-               (phrase-type np)
-               (form-args (?first-slot-start ?second-slot-end))
-               (subunits (?first-slot-unit ?second-slot-unit)))
+               (meaning-args (?a))
+               (syntactic-form np)
+               (subunits (?first-slot ?second-slot)))
               <-
-              (?first-slot-unit
-               (referent ?slot-1-ref)
+              (?first-slot
+               (meaning-args (?slot-1-ref))
                --
-               (category noun)
-               (form-args (?first-slot-start ?first-slot-end)))
+               (lex-class noun))
               (?or-unit
-               (HASH meaning (
-                              (:op1 ?a ?slot-1-ref)
-                              (:op2 ?a ?slot-2-ref)))
+               (meaning ((amr-choice ?a)
+                         (:op1 ?a ?slot-1-ref)
+                         (:op2 ?a ?slot-2-ref)))
                --
-               (HASH form ((sequence " or " ?or-start ?or-end)
-                           (precedes ?first-slot-end ?or-start)
-                           (precedes ?or-end ?second-slot-start))))
-              (?second-slot-unit
-               (referent ?slot-2-ref)
+               (string "or"))
+              (?second-slot
+               (meaning-args (?slot-2-ref))
                --
-               (category noun)
-               (form-args (?second-slot-start ?second-slot-end)))))
+               (lex-class noun))))
 
 (def-fcg-cxn like-cxn
-             ((?like-unit
-               (referent ?l)
-               (category verb)
-               (finite -)
-               (form-args (?start ?end)))
-              <-
+             (<-
               (?like-unit
-               (HASH meaning ((like ?l)))
+               (meaning ((like.02 ?l)))
+               (meaning-args (?l))
+               (sem-roles (arg0 ?subject)
+                          (arg1 ?phrasal-complement))
+               (lex-class base-verb)
+               (syntactic-form verb)
                --
-               (HASH form ((sequence "like" ?start ?end))))))
+               (string "like"))))
 
 (def-fcg-cxn would-cxn
-             ((?would-unit
-               (referent ?d)
-               (category aux)
-               (modal +)
-               (form-args (?start ?end)))
-              <-
+             (<-
               (?would-unit
-               (HASH meaning ((deontic ?d)))
+               (lex-class modal-verb)
+               (syntactic-function (pred-op))
                --
-               (HASH form ((sequence "would" ?start ?end))))))
+               (string "would"))))
 
-(def-fcg-cxn modal-cxn
-             ((?base-verb-unit
-               (footprints (modal)))
+
+(def-fcg-cxn here-cxn
+             (<-
+              (?here-unit
+               (meaning ((here ?h)))
+               (meaning-args (?h))
+               (syntactic-form adverb)
+               --
+               (string "here"))))
+
+(def-fcg-cxn she-cxn
+             (<-
+              (?she-unit
+               (meaning ((she ?s)))
+               (lex-class pers-pronoun)
+               (syntactic-form np)
+               (meaning-args (?s))
+               (agreement (person 3)
+                          (number sg)
+                          (gender f)
+                          (case nominative))
+               --
+               (string "she"))))      
+
+(def-fcg-cxn has-done-lv-cxn
+             (<-
+              (?has-unit
+               (meaning-args (?event))
+               (syntactic-form verb)
+               --
+               (string "has")
+               (dependency-head ?done-unit))
+              (?done-unit
+               (syntactic-form verb)
+               --
+               (lemma do)
+               (string "done")
+               (parent ?vp-unit))
+              (?vp-unit
+               --
+               (word-order ((adjacent ?done-unit ?nominalisation-unit)))
+               (constituents (?done-unit ?nominalisation-unit)))
+              (?nominalisation-unit
+               --
+               (syntactic-form np)
+               (meaning-args (?event)))))
+
+(def-fcg-cxn groundbreaking-neuroimaging-research-cxn
+             (<-
+              (?np-unit
+               (meaning ((research.01 ?r)
+                         (:arg1 ?r ?n)
+                         (neuroimaging ?n)
+                         (:mod ?r ?g)
+                         (groundbreaking ?g)))
+               (meaning-args (?r))
+               (syntactic-form np)
+               --
+               (string "groundbreaking neuroimaging research"))))
+
+(def-fcg-cxn intransitive-cxn
+             ((?slot-2-predicate
+               (footprints (arg-structure-cxn)))
               <-
-              (?modal-aux-unit
-               (referent ?mod)
-               (category aux)
-               (modal +)
+              (?slot-1-argument
+               (syntactic-function (potential subject))
                --
-               (referent ?mod)
-               (category aux)
-               (modal +)
-               (form-args (?start-mod ?end-mod)))
-              (?base-verb-unit
-               (referent ?event)
-               (category verb)
-               (finite -)
-               (HASH meaning ((:mod ?event ?mod)))
-               (footprints (not modal))
+               (meaning-args (?agent))
+               (lex-class pers-pronoun)
+               (syntactic-form np))
+              (?slot-2-predicate
+               (sem-roles (arg0 ?agent))
+               (meaning ((:arg0 ?event ?agent)))
                --
-               (footprints (not modal))
-               (referent ?event)
-               (category verb)
-               (finite -)
-               (form-args (?start-base-v ?end-base-v))
-               (HASH form ((precedes ?end-mod ?start-base-v)))))
+               (footprints (not arg-structure-cxn))
+               (parent ?vp-parent)
+               (meaning-args (?event))
+               (syntactic-form verb))
+              (?vp-parent
+               (meaning-args (?event))
+               (syntactic-function (pred-rest))
+               --
+               (parent ?sentence))
+              (?sentence
+               (meaning-args (?event))
+               --
+               (constituents (?slot-1-argument ?vp-parent))))
              :disable-automatic-footprints t)
 
-(def-fcg-cxn you-cxn
-             ((?you-unit
-               (referent ?y)
-               (phrase-type np)
-               (category pron)
-               (form-args (?start ?end)))
-              <-
-              (?you-unit
-               (HASH meaning ((you ?y)))
-               --
-               (HASH form ((sequence "you" ?start ?end))))))
 
-(def-fcg-cxn monotransitive-cxn
-             ((?predicate-unit
-               (subunits (?verb-unit ?object-unit))
-               (referent ?event)
-               (meaning-args (?agent ?patient))
-               (form-args (?verb-start ?object-end))
-               (clause-type monotransitive))
-              <-
-              (?subject-unit
-               (referent ?agent)
-               (phrase-type np)
+(def-fcg-cxn it-cleft-where-cxn
+             (<-
+              (?first-slot
+               (syntactic-function (subject))
                --
-               (phrase-type np)
-               (form-args (?subject-start ?subject-end)))
-              (?verb-unit
-               (category verb)
-               (referent ?event)
-               (HASH meaning ((:arg0 ?event ?agent)
-                              (:arg1 ?event ?patient)))
+               (string "it"))
+              (?second-slot
+               (syntactic-function (V))
+               (meaning ((be-located-at-91 ?b)
+                         (:arg2-of ?b ?h)
+                         (:arg1 ?b ?r)))
                --
-               (form-args (?verb-start ?verb-end))
-               (category verb)
-               (finite -))
-              (?predicate-unit
-               
+               (lemma be))
+              (?third-slot
+               (syntactic-function (obj attr))
                --
-               (HASH form ((sequence " " ?subject-end ?verb-start)
-                           (sequence " " ?verb-end ?object-start))))
-              (?object-unit
-               (referent ?patient)
-               (phrase-type np)
+               (meaning-args (?h))
+               (syntactic-form adverb)) ;;here
+              (?fourth-slot
+               (syntactic-function (dependent-clause))
                --
-               (phrase-type np)
-               (form-args (?object-start ?object-end))))
-             )
-              
-(def-fcg-cxn alternative-question-cxn
-             ((?sentence
-               (subunits (?operator-verb ?subject ?predicate-rest)))
-              <-
-              (?operator-verb
-               (category aux)
-               (form-args (?start-mod ?end-mod))
+               (constituents (?where ?dependent-clause)))
+              (?dependent-clause
+               (syntactic-function (dependent-clause))
                --
-               (category aux)
-               (form-args (?start-mod ?end-mod)))
-              (?subject
-               (referent ?arg0)
-               (phrase-type np)
+               (meaning-args (?r)))
+              (?where
                --
-               (phrase-type np)
-               (form-args (?start-subj ?end-subj))
-               )
-              (?predicate-rest
-               (clause-type monotransitive)
-               (meaning-args (?arg0 ?arg1))
-               --
-               
-               (meaning-args (?arg0 ?arg1))
-               (form-args (?start-pred ?end-pred)))
-              (?sentence
-               (HASH meaning ((amr-choice ?arg1)))
-               --
-               (HASH form ((sequence " " ?end-mod ?start-subj)
-                           (sequence "?" ?end-pred ?end-question-mark))))))
-              
-)
+               (string "where")
+               (parent ?fourth-slot)))
+             :description "Highlight focused / new information to hearer.")
 
-;;(activate-monitor trace-fcg)
-(comprehend "would you like tea or coffee?")
-(comprehend-and-formulate "would you like tea or coffee?")
 
+;; It's here where she has done groundbreaking neuroimaging research (COCA-2014-SPOK)
+
+#|'(h / here
+    :arg2-of (b / be-located-at-91
+                :arg1 (r / research.01
+                         :arg1 (n / neuroimaging)
+                         :mod (g / groundbreaking)
+                         :arg0 (s / she))))|#
+
+;;((FCG::HERE FCG::H) (FCG::BE-LOCATED-AT-91 UTILS:B) (FCG::RESEARCH.01 FCG::R) (FCG::NEUROIMAGING FCG::N) (FCG::GROUNDBREAKING FCG::G) (FCG::SHE FCG::S) (:ARG2-OF FCG::H UTILS:B) (:ARG1 UTILS:B FCG::R) (:ARG1 FCG::R FCG::N) (:MOD FCG::R FCG::G) (:ARG0 FCG::R FCG::S))
+
+
+;;(comprehend-all "it's here where she has done groundbreaking neuroimaging research")
+
+
+
+
+
+;; (ql:quickload :ofef-parser)
+;; (ofef-parser:fcg->ofef *fcg-constructions*)

@@ -1,4 +1,4 @@
-(in-package :fcg-propbank)
+(in-package :fcg)
 
 ;;;;;;;;;;;;;;;;;;
 ;;              ;;
@@ -6,10 +6,6 @@
 ;;              ;;
 ;;;;;;;;;;;;;;;;;;
 
-(defmethod de-render ((utterance fcg-propbank-sentence) (mode (eql :de-render-constituents-dependents))
-                      &key &allow-other-keys)
-  "De-renders an fcg-propbank-sentence, using its stored initial transient structure."
-  (initial-transient-structure utterance))
 
 
 (defmethod de-render ((utterance string) (mode (eql :de-render-constituents-dependents))
@@ -26,7 +22,8 @@
 
 (defun create-initial-transient-structure-based-on-benepar-analysis (spacy-benepar-analysis)
   "Transforms a spacy-benepar analysis into an initial transient structure."
-  (let* (;; Make unit names for the different units, and store them with the unit id.
+  (let* (;; Make unit names for the different units, and store them
+         ;; with the unit id.
          (unit-name-ids (loop for node in spacy-benepar-analysis
                               for node-id = (node-id node)
                               for node-type = (node-type node)
@@ -38,66 +35,44 @@
                                 collect (cons node-id (make-const (node-string node)))))
          ;; Make units
          (units (loop for node in spacy-benepar-analysis
-                      ;; attributes
                       for node-type = (node-type node)
                       for node-string = (node-string node)
-                      ;; For particles - take dependency head as parent instead of parent constituent
-                      for parent-id = (if (and (or (eq (node-lex-class node) 'rp) ;; node itself is a particle
-                                                   (eq (node-dependency-label node) 'prt))
-                                               (string= "V" (subseq (symbol-name (node-lex-class (get-node (node-dependency-head node)
-                                                                                                           spacy-benepar-analysis)))
-                                                                    0 1))
-                                               (adjacent-nodes? (node-dependency-head node) node spacy-benepar-analysis))
-                                        (node-dependency-head node) ;;we're dealing with a phrasal particle
-                                        (node-parent node))
+                      for parent-id = (node-parent node)
                       for dependency-head = (node-dependency-head node)
                       for node-id = (node-id node)
                       for unit-name = (cdr (assoc node-id unit-name-ids))
-                      for syn-class = (cond (;; for phrases...
-                                             (eq node-type 'phrase)
-                                             (node-phrase-types node))
-                                            ; for leaves...
-                                            ((and (eq (node-dependency-label node) 'aux)
-                                                  (not (eq (node-lex-class node) 'md)))
-                                             '(aux))
-                                            ((string= (node-dependency-label node) 'auxpass)
-                                             '(auxpass))
-                                            ((equalp "V" (subseq (format nil "~a" (node-lex-class node)) 0 1))
-                                             '(v))
-                                            ((and ;; one of these categories
-                                                  (member (node-lex-class node) '(nnp nns nn nnps prp prp$) :test #'eq)
-                                                  ;; and not parent that is np => WHY?
-                                                  (not (and parent-id
-                                                            (find parent-id spacy-benepar-analysis ;; has parent
-                                                                  :test #'= :key #'node-id)
-                                                            (member 'np ;; parent is np
-                                                                    (node-phrase-types (find parent-id spacy-benepar-analysis :test #'= :key #'node-id))
-                                                                    :test #'eq))))
-                                             '(np))
-                                            (t
-                                             `(,(node-lex-class node))))
-                                            
-                                
                       collect `(,unit-name
-                                (node-type ,node-type)
                                 (string ,node-string)
                                 (span (,(node-start node) ,(node-end node)))
                                 (parent ,(cdr (assoc parent-id unit-name-ids)))
                                 (dependency-head ,(cdr (assoc dependency-head unit-name-ids)))
-                                (syn-class ,syn-class)
                                 ,@(when (eq node-type 'phrase)
                                     `((constituents ,(find-constituents node-id spacy-benepar-analysis unit-name-ids))
                                       (word-order ,(find-adjacency-constraints node-id spacy-benepar-analysis unit-name-ids))))
                                 ,@(when (eq node-type 'leaf)
-                                    `((lemma ,(node-lemma node))
-                                      (dependency-label ,(node-dependency-label node)))))))
-
-       
+                                    `((lemma ,(node-lemma node))))
+                                (node-type ,node-type))))
          ;; Make transient structure
          (transient-structure (make-instance 'coupled-feature-structure 
-                                             :left-pole units ;; TO DO: check run phrasal verb check
+                                             :left-pole (add-dependents units) ;; TO DO: check run phrasal verb check
                                              :right-pole '((root)))))
     transient-structure))
+
+(defun add-dependents (unit-list)
+  "Add dependents feature to each leaf unit based on dependency-head features."
+  (loop for head-unit in unit-list
+        if (equal (unit-feature-value head-unit 'node-type) 'leaf)
+          collect (let ((dependents-feature
+                         (loop for dependent-unit in (remove head-unit unit-list :test #'equalp)
+                               for dependency-head = (unit-feature-value dependent-unit 'dependency-head)
+                               when (equalp dependency-head (unit-name head-unit))
+                                 collect (unit-name dependent-unit) into dependents
+                               finally (return (list 'dependents dependents)))))
+                    (append head-unit
+                            (list dependents-feature)))
+        else collect head-unit))
+        
+
 
 (defun adjacent-nodes? (node-id-1 node-2 spacy-benepar-analysis)
   (let* ((node-1 (find node-id-1 spacy-benepar-analysis :key #'node-id))
@@ -151,7 +126,7 @@
 
 (defun node-type (spacy-benepar-analysis-node)
   "Returns the type of the node, i.e. 'phrase or 'leaf."
-  (intern (upcase (cdr (assoc :node--type spacy-benepar-analysis-node))) :fcg-propbank))
+  (intern (upcase (cdr (assoc :node--type spacy-benepar-analysis-node))) :fcg))
 
 (defun node-string (spacy-benepar-analysis-node)
   "Returns the string of the node."
@@ -160,7 +135,7 @@
 (defun node-phrase-types (spacy-benepar-analysis-node)
   "Returns the phrase types of the node"
   (mapcar #'(lambda (phrase-type-string)
-              (intern (upcase phrase-type-string) :fcg-propbank))
+              (intern (upcase phrase-type-string) :fcg))
           (cdr (assoc :phrase--types spacy-benepar-analysis-node))))
 
 (defun node-id (spacy-benepar-analysis-node)
@@ -181,15 +156,15 @@
 
 (defun node-lemma (spacy-benepar-analysis-leaf-node)
   "Returns the lemma of the leaf node"
-  (intern (upcase (cdr (assoc :lemma spacy-benepar-analysis-leaf-node))) :fcg-propbank))
+  (intern (upcase (cdr (assoc :lemma spacy-benepar-analysis-leaf-node))) :fcg))
 
 (defun node-lex-class (spacy-benepar-analysis-leaf-node)
   "Returns the lex-class of the leaf node"
-  (intern (upcase (cdr (assoc :lex--class spacy-benepar-analysis-leaf-node))) :fcg-propbank))
+  (intern (upcase (cdr (assoc :lex--class spacy-benepar-analysis-leaf-node))) :fcg))
 
 (defun node-dependency-label (spacy-benepar-analysis-leaf-node)
   "Returns the dependency-label of the leaf node"
-  (intern (upcase (cdr (assoc :dependency--label spacy-benepar-analysis-leaf-node))) :fcg-propbank))
+  (intern (upcase (cdr (assoc :dependency--label spacy-benepar-analysis-leaf-node))) :fcg))
 
 (defun node-dependency-head (spacy-benepar-analysis-leaf-node)
   "Returns the id of the head of the leaf-node"
@@ -280,7 +255,7 @@
   (let ((phrasal-lemma (intern (upcase (format nil "~a-~a"
                                                (unit-feature-value verb-unit 'lemma)
                                                (unit-feature-value particle-unit 'lemma)))
-                               :fcg-propbank)))
+                               :fcg)))
   `(,(make-const "PHRASAL-VP")
     (constituents (,(unit-name verb-unit) ,(unit-name particle-unit)))
     (node-type phrase)

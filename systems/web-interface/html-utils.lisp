@@ -741,7 +741,7 @@ function hideMenu(id) {
                                 (negated? nil))
   "function that returns html code for highlighting an element in the web interface.
 When 'negated?' (comes from FCG-light notation), the element appears in red"
-  (let* ((symbol-name (mkstr element))
+  (let* ((symbol-name (escape-for-html (mkstr element)))
          (element-id (mkstr (make-id "s")))
          (background-color (get-color-for-symbol symbol-name)))
     `((span :class "table")
@@ -754,7 +754,7 @@ When 'negated?' (comes from FCG-light notation), the element appears in red"
        ,(if (and (stringp element)
                  if-string-print-as-string)
           (format nil (string-append string-tab "&quot;~(~a~)&quot;") element)
-          (format nil (string-append string-tab "~(~a~)") element))))))
+          (escape-for-html (format nil (string-append string-tab "~(~a~)") element)))))))
 
 ;; #########################################################
 ;; make-html for t and blackboard
