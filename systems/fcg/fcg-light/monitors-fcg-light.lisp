@@ -14,7 +14,7 @@
 ;;=========================================================================
 (in-package :fcg)
 
-(export '(trace-fcg))
+(export '(trace-fcg trace-comprehension-result))
 
 ;; ############################################################
 ;; trace-fcg
@@ -230,6 +230,45 @@
                            (predicate-network->svg meaning))
                          (html-pprint meaning))))
   (add-element `((p) " ")))
+
+
+;; ############################################################
+;; trace-comprehension-result
+;; ############################################################
+
+(define-monitor trace-comprehension-result 
+    :documentation "Traces the result of comprehension in the browser (constructional dependencies + meaning representation.")
+
+(define-event-handler (trace-comprehension-result parse-started)
+  (add-element `((hr)))
+  (add-element `((h2) ,(format nil "Comprehending &quot;~{~a~^ ~}&quot;" utterance))))
+
+(define-event-handler (trace-comprehension-result cip-finished)
+  (when (eq (direction cip) '<-)
+    (add-dependency-graph-and-meaning solution cip)))
+
+(defun add-dependency-graph-and-meaning (solution-node cip)
+  (let ((cxn-inventory (construction-inventory solution-node)))
+    (add-element `((hr)))
+    (add-element
+    `((div)
+      ((table :class "two-col")
+       ((tbody)
+        ,(if (and (program-installed-p "dot") (get-configuration (visualization-configuration cxn-inventory) :show-constructional-dependencies))
+           `((tr)
+             ((td) ((h3) "Constructional dependency graph:"))
+             ((td) ((h3) "Resulting meaning representation:"))))
+           
+           ((tr)
+             ((td) ,(make-html (analyse-solution solution-node '<-)
+                               :configuration (configuration cxn-inventory)))
+             ((td) ,(if (get-configuration cxn-inventory :draw-meaning-as-network)
+                      (predicate-network->svg (extract-meanings (left-pole-structure (car-resulting-cfs (cipn-car solution-node)))))
+                      (html-pprint (extract-meanings (left-pole-structure (car-resulting-cfs (cipn-car solution-node)))))))))))))
+    (add-element `((p) " ")))
+    
+
+
 
 ;; ############################################################
 ;; trace-fcg-search-process
