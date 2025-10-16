@@ -15,8 +15,10 @@
        (cond
          ((and int-val (string= (princ-to-string int-val) val)) (princ-to-string int-val))
          ((and float-val (string= (princ-to-string float-val) val)) (princ-to-string float-val))
-         (t (format nil "\"~A\"" val)))))
+         (t (format nil "\"\\\"~A\\\"\"" val)))))
     (t (format nil "\"~A\"" (stringify-atom val)))))
+
+
 
 (defun hashtable-keys->json (ht)
   "Convert a hash table to a JSON array of its keys.
@@ -404,7 +406,7 @@ Other strings are wrapped in extra quotes."
                               )
                              (t
                               (let ((value (cdr feature)))
-                                (when (and (listp value) (= (length value) 1))
+                                (when (and (listp value) (= (length value) 1) (atom (first value)))
                                   (setf value (first value)))
                                 (cond
                                  ;; Case 1: single atom
@@ -466,8 +468,9 @@ Other strings are wrapped in extra quotes."
                               )
                              (t
                               (let ((value (cdr feature)))
-                                (when (and (listp value) (= (length value) 1))
+                                (when (and (listp value) (= (length value) 1) (atom (first value)))
                                   (setf value (first value)))
+                                
                                 (cond
                                  ;; Case 1: single atom
                                  ((atom value)
@@ -479,11 +482,14 @@ Other strings are wrapped in extra quotes."
                                  ((and (listp value)
                                        (every #'listp value))
                                   ;; nested sublists
-                                  (setf body (concatenate 'string body (list-of-lists->json (cdr feature))))
-                                  )
+                                  (progn
+                                    (setf body (concatenate 'string body (list-of-lists->json (cdr feature))))
+                                  ))
                                  
                                  (t
-                                  (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))
+                                  (progn
+                                    (setf body (concatenate 'string body (list-to-json (car (cdr feature)))))                                    
+                                  )
                                   ;; mixed or unexpected structure
                                   ))))
                           ))))
@@ -495,7 +501,7 @@ Other strings are wrapped in extra quotes."
                  (loop for feature in (comprehension-lock unit)
                        for feature-type = (cdr (assoc (car feature) ft))
                        do (progn
-                            (format t "~A~%" feature)
+                            ;(format t "~A~%" feature)
                             (unless first2
                               (setf body (concatenate 'string body ",")))
                             (setf first2 nil)
@@ -513,7 +519,7 @@ Other strings are wrapped in extra quotes."
                               )
                              (t
                               (let ((value (cdr feature)))
-                                (when (and (listp value) (= (length value) 1))
+                                (when (and (listp value) (= (length value) 1) (atom (first value)))
                                   (setf value (first value)))
                                 (cond
                                  ;; Case 1: single atom
@@ -577,7 +583,7 @@ Other strings are wrapped in extra quotes."
       (let ((config (configuration (configuration (processing-cxn-inventory fcg-constructions-object)))))
         (format out (hashtable->json config))
         )
-      (format out ",\"features-types\":")
+      (format out ",\"feature-types\":")
       (let ((ft (feature-types fcg-constructions-object)))
         (format out (alist->json-list ft))
         (format out ",\"categorial-network\":{\"nodes\":")
