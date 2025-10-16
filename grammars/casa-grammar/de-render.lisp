@@ -39,10 +39,17 @@
                       for node-string = (node-string node)
                       for parent-id = (node-parent node)
                       for dependency-head = (node-dependency-head node)
+                      for dependency-label = (node-dependency-label node)
+                      for lex-class = (node-lex-class node)
+                      for phrase-types = (node-phrase-types node)
                       for node-id = (node-id node)
                       for unit-name = (cdr (assoc node-id unit-name-ids))
+                      when (eq node-type 'leaf)
                       collect `(,unit-name
                                 (string ,node-string)
+                                (dependency-label ,dependency-label)
+                                (lex-class ,lex-class)
+                                (phrase-types ,phrase-types)
                                 (span (,(node-start node) ,(node-end node)))
                                 (parent ,(cdr (assoc parent-id unit-name-ids)))
                                 (dependency-head ,(cdr (assoc dependency-head unit-name-ids)))
@@ -54,7 +61,7 @@
                                 (node-type ,node-type))))
          ;; Make transient structure
          (transient-structure (make-instance 'coupled-feature-structure 
-                                             :left-pole (add-dependents units) ;; TO DO: check run phrasal verb check
+                                             :left-pole (add-dependents units)
                                              :right-pole '((root)))))
     transient-structure))
 

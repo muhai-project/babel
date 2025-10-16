@@ -2,7 +2,6 @@
 
 ;; (ql:quickload :fcg-propbank)
 
-
 ;; Retrieving the training corpora annotated with initial transient structures
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -44,12 +43,12 @@
 
 (mapcar #'sentence-string *training-set*)
 
-(learn-propbank-grammar (subseq *training-set* 225 226)
-                        #|:excluded-rolesets '("be.01" "be.02" "be.03"
-                                             "do.01" "do.02" "do.04" "do.11" "do.12"
-                                             "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
-                                             "get.03" "get.06" "get.24")|#
-                        :cxn-inventory '*ewt-grammar*
+(learn-propbank-grammar *full-corpus*
+                        :excluded-rolesets '("be.01" "be.02" "be.03"
+                                             "do.lv" "do.01" "do.02" "do.04" "do.11" "do.12"
+                                             "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
+                                             "get.lv" "get.03" "get.06" "get.24")
+                        :cxn-inventory '*propbank-grammar*
                         :fcg-configuration '((:replace-when-equivalent . nil)
                                              (:learning-modes :core-roles)))      ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
 
@@ -57,11 +56,13 @@
 ;; Using a learnt grammar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(activate-monitor trace-fcg)
+;; (activate-monitor trace-fcg)
+;; (defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
 
-(set-configuration *ewt-grammar* :heuristics '(:minimize-path-length :nr-of-roles-integrated))
 
-(add-element (make-html *ewt-grammar*))
+(set-configuration *propbank-grammar* :heuristics '(:minimize-path-length :nr-of-roles-integrated))
 
-(loop for propbank-utterance in (subseq *training-set* 225 226)
-      do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *ewt-grammar*))
+(add-element (make-html *propbank-grammar*))
+
+(loop for propbank-utterance in (subseq (shuffle *full-corpus*) 0 5)
+      do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar*))
