@@ -37,7 +37,7 @@
                          #-(or :win32 :windows) "Arial")
         (s-dot::height "0.01"))
        (s-dot::node ((s-dot::id ,(mkdotstr (id concept)))
-                     (s-dot::label ,(format nil "~a" (mkdotstr (format nil "CONCEPT-~a" (first (last (split-string (symbol-name (id concept1)) "-")))))))
+                     (s-dot::label ,(format nil "~a" (mkdotstr (format nil "CONCEPT-~a" (first (last (split-string (symbol-name (id concept)) "-")))))))
                      (s-dot::fontcolor "#AA0000"))))
      g)
     ;; nodes for features

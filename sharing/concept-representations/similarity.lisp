@@ -31,7 +31,10 @@
                     0)))
     (exp (- (abs z-score)))))
 
-(defmethod distribution-feature-similarity ((distribution categorical) (feature-value string) &key (laplace-smoother 1) &allow-other-keys)
+(defmethod distribution-feature-similarity ((distribution categorical)
+                                            (feature-value symbol)
+                                            &key (laplace-smoother 1)
+                                            &allow-other-keys)
   "Measures the similarity between a feature value (a category) and a categorical distribution."
   (let* ((total (nr-of-samples distribution))
          (frequency (gethash feature-value (frequencies distribution)))
@@ -47,7 +50,9 @@
 ;; ---------------------------------
 ;; + Comparing CONCEPT <-> CONCEPT +
 ;; ---------------------------------
-(defmethod concept-similarity ((concept1 weighted-multivariate-distribution-concept) (concept2 weighted-multivariate-distribution-concept))
+(defmethod concept-similarity ((concept1 weighted-multivariate-distribution-concept)
+                               (concept2 weighted-multivariate-distribution-concept)
+                               mode)
   "Compute the similarity between two concepts.
    
    The overall similarity is computed by summing the weighted similarity between
@@ -57,9 +62,13 @@
         for wd1 in (get-weighted-distributions concept1)
         for wd2 = (get-weighted-distribution concept2 (feature-name wd1))
         if (and (not (zerop sum-of-weights1)) (not (zerop sum-of-weights2)))
-          sum (weighted-distribution-similarity wd1 wd2 sum-of-weights1 sum-of-weights2)))
+          sum (weighted-distribution-similarity wd1 wd2 sum-of-weights1 sum-of-weights2 mode)))
 
-(defmethod weighted-distribution-similarity ((wd1 weighted-distribution) (wd2 weighted-distribution) (sum-of-weights1 number) (sum-of-weights2 number))
+(defmethod weighted-distribution-similarity ((wd1 weighted-distribution)
+                                             (wd2 weighted-distribution)
+                                             (sum-of-weights1 number)
+                                             (sum-of-weights2 number)
+                                             (mode symbol))
   "Calculates the similarity between two weighted distributions.
    
    The similarity corresponds to a product t-norm of
@@ -73,6 +82,6 @@
         ;; similarity of the weights
         (weight-similarity (- 1 (abs (- (/ (weight wd1) sum-of-weights1) (/ (weight wd2) sum-of-weights2)))))
         ;; take complement of distance (1-f) so that it becomes a similarity metric
-        (distribution-similarity (- 1 (f-divergence (distribution wd1) (distribution wd2)))))
+        (distribution-similarity (- 1 (f-divergence (distribution wd1) (distribution wd2) mode))))
     ;; multiple all three
     (* average-weight weight-similarity distribution-similarity)))
