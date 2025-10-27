@@ -9,7 +9,7 @@
 (defun create-path (dataset-name dataset-split)
   (merge-pathnames
    (make-pathname :directory `(:relative
-                               "concept-emergence2" ;; ADAPT
+                               "concept-emergence" ;; ADAPT
                                "split-by-entities"  ;; ADAPT
                                ,dataset-name)
                   :name (format nil
