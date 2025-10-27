@@ -1,5 +1,0 @@
-id,exp_name,nr_of_interactions,dataset_loader,min_context_size,max_context_size,dataset,dataset_split,feature_set,scene_sampling,topic_sampling
-1,winery-pc-3-10,100000,:runtime,nil,nil,winery,test,winery,:random,:random
-2,winery-rt-3-10,100000,:runtime,3,10,winery,test,winery,:random,:random
-3,credit-pc-3-10,100000,:runtime,nil,nil,credit,test,credit,:random,:random
-4,credit-rt-3-10,100000,:runtime,3,10,credit,test,credit,:random,:random

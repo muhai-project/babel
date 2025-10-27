@@ -1,7 +1,0 @@
-logging/*
-store/*
-batch/bash/scripts/**
-storage/*
-.vscode/*
-prefix-lw-project.py
-**/.vscode/**

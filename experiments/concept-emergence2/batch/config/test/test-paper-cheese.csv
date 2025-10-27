@@ -1,9 +1,0 @@
-id,exp_name,nr_of_interactions,dataset_loader,min_context_size,max_context_size,dataset,dataset_split,feature_set,scene_sampling,topic_sampling
-1,shift-01,100000,:precomputed,nil,nil,clevr,test,clevr,:random,:random
-2,shift-1,100000,:precomputed,nil,nil,clevr,test,clevr,:random,:random
-3,shift-10,100000,:precomputed,nil,nil,clevr,test,clevr,:random,:random
-4,shift-20,100000,:precomputed,nil,nil,clevr,test,clevr,:random,:random
-5,noise-01,100000,:precomputed,nil,nil,clevr,test,clevr,:random,:random
-6,noise-1,100000,:precomputed,nil,nil,clevr,test,clevr,:random,:random
-7,noise-10,100000,:precomputed,nil,nil,clevr,test,clevr,:random,:random
-8,noise-20,100000,:precomputed,nil,nil,clevr,test,clevr,:random,:random
