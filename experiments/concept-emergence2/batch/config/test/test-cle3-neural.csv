@@ -1,5 +1,0 @@
-id,exp_name,nr_of_interactions,dataset_loader,min_context_size,max_context_size,dataset,dataset_split,feature_set,scene_sampling,topic_sampling
-1,neural-1,100000,:runtime,10,10,mscoco-facebook@dinov2-small mscoco-google@vit-base-patch16-224-in21k,test,mscoco-facebook@dinov2-small mscoco-google@vit-base-patch16-224-in21k,:random,:random
-2,neural-2,100000,:runtime,10,10,mscoco-facebook@dinov2-small mscoco-google@vit-base-patch16-224-in21k,test,mscoco-facebook@dinov2-small mscoco-google@vit-base-patch16-224-in21k,:random,:random
-3,neural-3,100000,:runtime,10,10,mscoco-facebook@dinov2-small mscoco-google@vit-base-patch16-224-in21k,test,mscoco-facebook@dinov2-small mscoco-google@vit-base-patch16-224-in21k,:random,:random
-4,neural-4,100000,:runtime,10,10,mscoco-facebook@dinov2-small mscoco-google@vit-base-patch16-224-in21k,test,mscoco-facebook@dinov2-small mscoco-google@vit-base-patch16-224-in21k,:random,:random
