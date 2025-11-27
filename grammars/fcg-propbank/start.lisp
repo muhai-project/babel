@@ -46,11 +46,11 @@
 
 ;;(mapcar #'sentence-string *training-set*)
 
-(learn-propbank-grammar *training-set*
-                        :excluded-rolesets '("be.01" "be.02" "be.03"
+(learn-propbank-grammar *full-corpus*
+                       #| :excluded-rolesets '("be.01" "be.02" "be.03"
                                              "do.lv" "do.01" "do.02" "do.04" "do.11" "do.12" "done.08"
                                              "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
-                                             "get.lv" "get.03" "get.06" "get.24")
+                                             "get.lv" "get.03" "get.06" "get.24")|#
                         :cxn-inventory '*propbank-grammar-core-roles*
                         :fcg-configuration '((:replace-when-equivalent . nil)
                                              (:learning-modes :core-roles)))      ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
@@ -106,7 +106,7 @@ under different keys"
 
 (add-element (make-html *propbank-grammar-core-roles*))
 
-(loop for propbank-utterance in (subseq (shuffle *test-set*) 0 5)
+(loop for propbank-utterance in (subseq (shuffle *full-corpus*) 0 5)
       do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-core-roles*))
 
 (length *test-set*)
@@ -116,7 +116,9 @@ under different keys"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(comprehend-and-evaluate  *test-set* *propbank-grammar-core-roles*
+(comprehend-and-evaluate (subseq (shuffle *full-corpus*) 0 10)
+                         *propbank-grammar-core-roles*
                          :core-roles-only t :include-word-sense nil :include-timed-out-sentences nil
                          :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
+                         :timeout 120
                          :per-frame-evaluation t)

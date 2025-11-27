@@ -282,7 +282,7 @@
             for recall = (compute-recall number-of-correct-predictions number-of-gold-standard-predictions)
             for f1-score = (compute-f1-score number-of-correct-predictions number-of-grammar-predictions number-of-gold-standard-predictions)
             do
-              (format t "~a ~a ~a ~a ~a ~a ~a ~a ~a ~a ~a ~a ~a~%" 
+              (format t "~a ~a ~$ ~a ~$ ~a ~$ ~a ~a ~a ~a ~a ~a~%" 
                       frame-name #\tab
                       precision #\tab
                       recall #\tab
@@ -290,7 +290,7 @@
                       number-of-correct-predictions #\tab
                       number-of-grammar-predictions #\tab
                       number-of-gold-standard-predictions)
-              (write-line (format nil "~a,~a,~a,~a,~a,~a,~a ~%"
+              (write-line (format nil "~a,~$,~$,~$,~a,~a,~a ~%"
                                   frame-name
                                   precision
                                   recall

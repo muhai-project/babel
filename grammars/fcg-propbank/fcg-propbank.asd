@@ -21,6 +21,9 @@
                 :serial t
                 :components ((:file "conll-annotations-interface")
                              (:file "ewt-ontonotes-english")))
+               (:module evaluation
+                :serial t
+                :components ((:file "evaluation")))
                (:module learning
                 :serial t
                 :components ((:file "utils")
