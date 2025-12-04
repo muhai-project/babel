@@ -28,7 +28,8 @@
           finally (return all-succeeded))))
 
 (defun comprehend-and-evaluate (list-of-propbank-sentences cxn-inventory &key (timeout 60) (core-roles-only t)
-                                                           (selected-rolesets nil) (excluded-rolesets nil)
+                                                           (selected-rolesets nil)
+                                                           (excluded-frames nil)
                                                            (include-word-sense t) (include-timed-out-sentences t)
                                                            (include-sentences-with-incomplete-role-constituent-mapping t)
                                                            (silent nil) (per-frame-evaluation nil))
@@ -45,14 +46,14 @@
         (evaluate-predictions-per-frame predictions
                                         :core-roles-only core-roles-only
                                         :selected-rolesets selected-rolesets
-                                        :excluded-rolesets excluded-rolesets
+                                        :excluded-frames excluded-frames
                                         :include-word-sense include-word-sense 
                                         :include-timed-out-sentences include-timed-out-sentences
                                         :include-sentences-with-incomplete-role-constituent-mapping include-sentences-with-incomplete-role-constituent-mapping)
         (evaluate-predictions predictions
                               :core-roles-only core-roles-only
                               :selected-rolesets selected-rolesets
-                              :excluded-rolesets excluded-rolesets
+                              :excluded-frames excluded-frames
                               :include-word-sense include-word-sense 
                               :include-timed-out-sentences include-timed-out-sentences
                               :silent silent
@@ -82,7 +83,7 @@
           into evaluation
           finally (cl-store:store evaluation output-file))))
 
-(defun evaluate-predictions (predictions &key (core-roles-only t) (selected-rolesets nil) (include-word-sense t) (include-timed-out-sentences t) (excluded-rolesets nil) (include-sentences-with-incomplete-role-constituent-mapping t) (silent nil))
+(defun evaluate-predictions (predictions &key (core-roles-only t) (selected-rolesets nil) (include-word-sense t) (include-timed-out-sentences t) (excluded-frames nil) (include-sentences-with-incomplete-role-constituent-mapping t) (silent nil))
   "Computes precision, recall and F1 score for a given list of predictions."
   (loop for (sentence annotation solution) in predictions
         when (and (or include-timed-out-sentences
@@ -97,7 +98,7 @@
                   for frame-name = (if include-word-sense
                                      (frame-name frame)
                                      (truncate-frame-name (frame-name frame)))
-                  if (and (null (find frame-name excluded-rolesets :test #'equalp))
+                  if (and (null (find (truncate-frame-name (frame-name frame)) excluded-frames :test #'equalp))
                           (or (null selected-rolesets)
                               (find frame-name selected-rolesets :test #'equalp)))
                   sum (loop for role in (frame-roles frame)
@@ -118,7 +119,7 @@
                                      (symbol-name (frame-name predicted-frame))
                                      (truncate-frame-name (symbol-name (frame-name predicted-frame))))
                   when (and frame-name
-                            (null (find frame-name excluded-rolesets :test #'equalp))
+                            (null (find (truncate-frame-name (symbol-name (frame-name predicted-frame))) excluded-frames :test #'equalp))
                             (or (null selected-rolesets)
                                 (find frame-name selected-rolesets :test #'equalp))
                             (find (truncate-frame-name frame-name) annotation
@@ -144,7 +145,7 @@
                                      (symbol-name (frame-name predicted-frame))
                                      (truncate-frame-name (symbol-name (frame-name predicted-frame))))
                   when (and frame-name
-                            (null (find frame-name excluded-rolesets :test #'equalp))
+                            (null (find frame-name excluded-frames :test #'equalp))
                             (or (null selected-rolesets)
                                 (find frame-name selected-rolesets :test #'equalp)))
                   sum (+ (loop for predicted-frame-element in (frame-elements predicted-frame) ;;frame elements
@@ -181,8 +182,13 @@
 
 (defun evaluate-predictions-per-frame (predictions &key (core-roles-only t) (selected-rolesets nil)
                                                    (include-word-sense t) (include-timed-out-sentences t) 
-                                                   (excluded-rolesets nil) (include-sentences-with-incomplete-role-constituent-mapping t))
+                                                   (excluded-frames nil) (include-sentences-with-incomplete-role-constituent-mapping t))
   "Computes precision, recall and F1 score for a given list of predictions."
+
+  (evaluate-predictions predictions :core-roles-only core-roles-only :selected-rolesets selected-rolesets :include-word-sense include-word-sense
+                        :include-word-sense include-word-sense :include-timed-out-sentences include-timed-out-sentences
+                        :excluded-frames excluded-frames :include-sentences-with-incomplete-role-constituent-mapping include-sentences-with-incomplete-role-constituent-mapping)
+  
   (let ((number-of-gold-standard-predictions-per-frame (make-hash-table))
         (number-of-grammar-predictions-per-frame (make-hash-table))
         (number-of-correct-predictions-per-frame (make-hash-table)))
@@ -202,7 +208,7 @@
                     for frame-name-as-string = (if include-word-sense
                                                  (frame-name frame)
                                                  (truncate-frame-name (frame-name frame)))
-                    when (and (null (find frame-name-as-string excluded-rolesets :test #'equalp))
+                    when (and (null (find (truncate-frame-name (frame-name frame)) excluded-frames :test #'equalp))
                               (or (null selected-rolesets)
                                   (find frame-name-as-string selected-rolesets :test #'equalp)))
                       do
@@ -222,7 +228,7 @@
                                                  (symbol-name (frame-name predicted-frame))
                                                  (truncate-frame-name (symbol-name (frame-name predicted-frame))))
                     when (and frame-name-as-string
-                              (null (find frame-name-as-string excluded-rolesets :test #'equalp))
+                              (null (find (truncate-frame-name (symbol-name (frame-name predicted-frame))) excluded-frames :test #'equalp))
                               (or (null selected-rolesets)
                                   (find frame-name-as-string selected-rolesets :test #'equalp))
                               (find (truncate-frame-name frame-name-as-string) annotation
@@ -244,7 +250,7 @@
                                                  (symbol-name (frame-name predicted-frame))
                                                  (truncate-frame-name (symbol-name (frame-name predicted-frame))))
                     when (and frame-name-as-string
-                              (null (find frame-name-as-string excluded-rolesets :test #'equalp))
+                              (null (find (truncate-frame-name (symbol-name (frame-name predicted-frame))) excluded-frames :test #'equalp))
                               (or (null selected-rolesets)
                                   (find frame-name-as-string selected-rolesets :test #'equalp)))
                       do (let ((frame-name (intern (upcase frame-name-as-string))))
@@ -281,7 +287,7 @@
             for precision = (compute-precision number-of-correct-predictions number-of-grammar-predictions)
             for recall = (compute-recall number-of-correct-predictions number-of-gold-standard-predictions)
             for f1-score = (compute-f1-score number-of-correct-predictions number-of-grammar-predictions number-of-gold-standard-predictions)
-            do
+            do ;; write frame evaluation result to the output buffer
               (format t "~a ~a ~$ ~a ~$ ~a ~$ ~a ~a ~a ~a ~a ~a~%" 
                       frame-name #\tab
                       precision #\tab
@@ -290,6 +296,7 @@
                       number-of-correct-predictions #\tab
                       number-of-grammar-predictions #\tab
                       number-of-gold-standard-predictions)
+              ;; write same frame evaluation result to csv file
               (write-line (format nil "~a,~$,~$,~$,~a,~a,~a ~%"
                                   frame-name
                                   precision
@@ -297,7 +304,8 @@
                                   f1-score
                                   number-of-correct-predictions
                                   number-of-grammar-predictions
-                                  number-of-gold-standard-predictions) s)))))
+                                  number-of-gold-standard-predictions) s)))
+    ))
 
 
            ;; collect (cons frame-name `((:precision . ,precision)

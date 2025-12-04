@@ -46,7 +46,7 @@
 
 ;;(mapcar #'sentence-string *training-set*)
 
-(learn-propbank-grammar *full-corpus*
+(learn-propbank-grammar *training-set*
                        #| :excluded-rolesets '("be.01" "be.02" "be.03"
                                              "do.lv" "do.01" "do.02" "do.04" "do.11" "do.12" "done.08"
                                              "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
@@ -107,18 +107,44 @@ under different keys"
 (add-element (make-html *propbank-grammar-core-roles*))
 
 (loop for propbank-utterance in (subseq (shuffle *full-corpus*) 0 5)
-      do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-core-roles*))
+       do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-core-roles*))
 
-(length *test-set*)
-
-
-;; Evaluating a learnt grammar
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ (length *test-set*)
 
 
-(comprehend-and-evaluate (subseq (shuffle *full-corpus*) 0 10)
-                         *propbank-grammar-core-roles*
-                         :core-roles-only t :include-word-sense nil :include-timed-out-sentences nil
-                         :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
-                         :timeout 120
-                         :per-frame-evaluation t)
+ ;; Evaluating a learnt grammar
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(comprehend-and-evaluate (subseq (shuffle *test-set*) 0 100)
+                          *propbank-grammar-core-roles*
+                          :core-roles-only t :include-word-sense nil :include-timed-out-sentences nil
+                          :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
+                          :timeout 60 :excluded-rolesets '("be.01" "be.02" "be.03" "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11")
+                          :per-frame-evaluation t)
+
+(set-configuration *propbank-grammar-core-roles* :heuristics '( :nr-of-roles-integrated))
+(comprehend-and-extract-frames "You who watch as budgets are cut in education and health care while you militarize a police force ?" :cxn-inventory 
+                                *propbank-grammar-core-roles*)
+(comprehend-and-extract-frames "I've seen a lot of matches this season , but I only watched up to the match where they lost to Bayern ." :cxn-inventory *propbank-grammar-core-roles*)
+
+
+
+(learn-propbank-grammar (subseq *training-set* 0 1000)
+                       #| :excluded-rolesets '("be.01" "be.02" "be.03"
+                                             "do.lv" "do.01" "do.02" "do.04" "do.11" "do.12" "done.08"
+                                             "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
+                                             "get.lv" "get.03" "get.06" "get.24")|#
+                        :cxn-inventory '*propbank-grammar-core-roles-mini*
+                        :fcg-configuration '((:replace-when-equivalent . nil)
+                                             (:learning-modes :core-roles)))
+
+
+(comprehend-and-evaluate (subseq *test-set* 0 20)
+                          *propbank-grammar-core-roles*
+                          :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
+                          :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
+                          :timeout 60 :excluded-frames '("be" "have")
+                          :per-frame-evaluation t)
+
+(comprehend-and-extract-frames "I think the time of Russia's most urgent need is already over ." :cxn-inventory *propbank-grammar-core-roles-mini*)

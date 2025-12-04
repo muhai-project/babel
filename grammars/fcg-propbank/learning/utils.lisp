@@ -261,9 +261,10 @@ initial transient structure that plays a role in the frame."
       `(,unit-name
         --
         (parent ,parent)
-        ,@(if dependency-label
+       #| ,@(if dependency-label
             `(,dependency-label)
-            `(,syn-class))
+            `(,syn-class))|#
+        ,syn-class
         ,@(when lemma
             `((lemma ,lemma)))
         ,@(when string
