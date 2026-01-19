@@ -37,9 +37,10 @@
                                     (dev-split *ewt-corpus-annotated-with-init-ts*)))
 
 (defparameter *training-set* (append (train-split *ontonotes-corpus-annotated-with-init-ts*)
-                                     (train-split *ewt-corpus-annotated-with-init-ts*)
-                                     (dev-split *ontonotes-corpus-annotated-with-init-ts*)
-                                     (dev-split *ewt-corpus-annotated-with-init-ts*)))
+                                     (dev-split *ontonotes-corpus-annotated-with-init-ts*)))
+                                     ;(train-split *ewt-corpus-annotated-with-init-ts*)
+                                     ;
+                                     ;(dev-split *ewt-corpus-annotated-with-init-ts*)))
 
 (defparameter *test-set* (append (test-split *ontonotes-corpus-annotated-with-init-ts*)
                                  (test-split *ewt-corpus-annotated-with-init-ts*)))
@@ -52,8 +53,9 @@
                                              "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
                                              "get.lv" "get.03" "get.06" "get.24")|#
                         :cxn-inventory '*propbank-grammar-core-roles*
-                        :fcg-configuration '((:replace-when-equivalent . nil)
-                                             (:learning-modes :core-roles)))      ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
+                        :fcg-configuration '((:replace-when-equivalent . t)
+                                             (:learning-modes :core-roles)))     ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
+(comprehend-and-extract-frames (sentence-string (fifth *training-set*)) :cxn-inventory *propbank-grammar-core-roles-small*)
 
 ;; Cleaning a grammar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -104,6 +106,12 @@ under different keys"
 
 (set-configuration *propbank-grammar-core-roles* :heuristics '(:minimize-path-length :nr-of-roles-integrated))
 
+(comprehend-and-extract-frames "Old Li Jingtang still tells visitors old war stories circulating in the Taihong Mountain area."
+                               :cxn-inventory *propbank-grammar-core-roles*)
+
+(comprehend-and-extract-frames "The children sent him a cake."
+                               :cxn-inventory *propbank-grammar-core-roles*)
+
 (add-element (make-html *propbank-grammar-core-roles*))
 
 (loop for propbank-utterance in (subseq (shuffle *full-corpus*) 0 5)
@@ -140,11 +148,11 @@ under different keys"
                                              (:learning-modes :core-roles)))
 
 
-(comprehend-and-evaluate (subseq *test-set* 0 20)
-                          *propbank-grammar-core-roles*
-                          :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
-                          :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
-                          :timeout 60 :excluded-frames '("be" "have")
-                          :per-frame-evaluation t)
+(comprehend-and-evaluate (subseq (shuffle *test-set*) 0 1000)
+                         *propbank-grammar-core-roles*
+                         :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
+                         :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
+                         :timeout 60 :excluded-frames '("be" "have")
+                         :per-frame-evaluation t)
 
 (comprehend-and-extract-frames "I think the time of Russia's most urgent need is already over ." :cxn-inventory *propbank-grammar-core-roles-mini*)

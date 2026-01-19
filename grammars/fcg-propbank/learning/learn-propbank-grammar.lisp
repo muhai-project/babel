@@ -194,9 +194,6 @@ grammatical category."
                                     collect (make-propbank-conditional-unit-with-role unit gram-category 'fee)))
          (cxn-units-without-role (make-propbank-conditional-units-without-role core-units-with-role
                                                                                cxn-units-with-role ts-unit-structure))
-         (passive (loop for unit in cxn-units-without-role
-                        when (eql '+ (unit-feature-value (cdr unit) 'passive))
-                        return t))
          (contributing-unit (make-propbank-contributing-unit core-units-with-role gold-frame gram-category 'fee))
          (schema (make-cxn-schema core-units-with-role cxn-units-with-role :core-roles))
          (cxn-name (intern (upcase (format nil "~a+~a-cxn" gram-category (length cxn-units-without-role))) :fcg-propbank))
