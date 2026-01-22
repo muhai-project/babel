@@ -142,7 +142,7 @@
 
 
 
-(defun make-gram-category (units-with-role &optional lemma)
+(defun make-argst-category (units-with-role &optional lemma)
   "Creates a unique grammatical category based on units-with-role."
   (if lemma
     (intern (symbol-name (make-const
@@ -215,7 +215,7 @@
 
 ;(truncate-frame-name 'believe.01)
 
-(defun make-propbank-contributing-unit (units-with-role gold-frame gram-category footprint &key (include-gram-category? t))
+(defun make-propbank-contributing-unit (units-with-role gold-frame argst-category footprint &key (include-argst-category? t))
   "Make a contributing unit based on a gold-frame and units-with-role."
   (let* ((v-unit (cdr (assoc "V" units-with-role :key #'role-type :test #'equalp)))
          (v-unit-name (variablify (unit-name v-unit)))
@@ -231,7 +231,7 @@
     `(,v-unit-name
       (frame-evoking +)
       (footprints (,footprint))
-      ,@(when include-gram-category? `((gram-category ,gram-category)))
+      ,@(when include-argst-category? `((argst-category ,argst-category)))
       (frame ?roleset)
       (meaning ,meaning))))
 
@@ -257,7 +257,7 @@ initial transient structure that plays a role in the frame."
         ,@(when frame-evoking
             '((frame-evoking +)))
         ,@(when category
-            `((lex-category ,category))))
+            `((fe-category ,category))))
       `(,unit-name
         --
         (parent ,parent)

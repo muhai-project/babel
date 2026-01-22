@@ -47,15 +47,16 @@
 
 ;;(mapcar #'sentence-string *training-set*)
 
-(learn-propbank-grammar *training-set*
+(learn-propbank-grammar (subseq *training-set* 0 1000)
                        #| :excluded-rolesets '("be.01" "be.02" "be.03"
                                              "do.lv" "do.01" "do.02" "do.04" "do.11" "do.12" "done.08"
                                              "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
                                              "get.lv" "get.03" "get.06" "get.24")|#
-                        :cxn-inventory '*propbank-grammar-core-roles*
+                        :cxn-inventory '*propbank-grammar-ontonotes-core-leafs*
                         :fcg-configuration '((:replace-when-equivalent . t)
-                                             (:learning-modes :core-roles)))     ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
-(comprehend-and-extract-frames (sentence-string (fifth *training-set*)) :cxn-inventory *propbank-grammar-core-roles-small*)
+                                             (:learning-modes :core-roles :argm-leaf)))     ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
+
+(comprehend-and-extract-frames (sentence-string (fifth *training-set*)) :cxn-inventory *propbank-grammar-ontonotes-core-leafs*)
 
 ;; Cleaning a grammar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -107,7 +108,7 @@ under different keys"
 (set-configuration *propbank-grammar-core-roles* :heuristics '(:minimize-path-length :nr-of-roles-integrated))
 
 (comprehend-and-extract-frames "Old Li Jingtang still tells visitors old war stories circulating in the Taihong Mountain area."
-                               :cxn-inventory *propbank-grammar-core-roles*)
+                               :cxn-inventory *propbank-grammar-ontonotes-core-leafs*)
 
 (comprehend-and-extract-frames "The children sent him a cake."
                                :cxn-inventory *propbank-grammar-core-roles*)
@@ -124,11 +125,11 @@ under different keys"
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(comprehend-and-evaluate (subseq (shuffle *test-set*) 0 100)
-                          *propbank-grammar-core-roles*
-                          :core-roles-only t :include-word-sense nil :include-timed-out-sentences nil
+(comprehend-and-evaluate (subseq (shuffle (subseq *training-set* 0 1000)) 0 100)
+                          *propbank-grammar-ontonotes-core-leafs*
+                          :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
                           :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
-                          :timeout 60 :excluded-rolesets '("be.01" "be.02" "be.03" "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11")
+                          :timeout 60 ;; :excluded-rolesets '("be.01" "be.02" "be.03" "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11")
                           :per-frame-evaluation t)
 
 (set-configuration *propbank-grammar-core-roles* :heuristics '( :nr-of-roles-integrated))
