@@ -37,27 +37,25 @@
                                     (dev-split *ewt-corpus-annotated-with-init-ts*)))
 
 (defparameter *training-set* (append (train-split *ontonotes-corpus-annotated-with-init-ts*)
-                                     (dev-split *ontonotes-corpus-annotated-with-init-ts*)))
-                                     ;(train-split *ewt-corpus-annotated-with-init-ts*)
-                                     ;
-                                     ;(dev-split *ewt-corpus-annotated-with-init-ts*)))
+                                     (dev-split *ontonotes-corpus-annotated-with-init-ts*)
+                                     (train-split *ewt-corpus-annotated-with-init-ts*)
+                                     (dev-split *ewt-corpus-annotated-with-init-ts*)))
 
 (defparameter *test-set* (append (test-split *ontonotes-corpus-annotated-with-init-ts*)
                                  (test-split *ewt-corpus-annotated-with-init-ts*)))
 
-;;(mapcar #'sentence-string *training-set*)
 
-(learn-propbank-grammar (subseq *training-set* 0 1000)
+(learn-propbank-grammar *training-set*
                        #| :excluded-rolesets '("be.01" "be.02" "be.03"
                                              "do.lv" "do.01" "do.02" "do.04" "do.11" "do.12" "done.08"
-                                             "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
+                                             "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05"
+                                             "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
                                              "get.lv" "get.03" "get.06" "get.24")|#
-                        :cxn-inventory '*propbank-grammar-ontonotes-core-leafs*
-                        :fcg-configuration '((:replace-when-equivalent . t)
-                                             (:learning-modes :core-roles :argm-leaf)))     ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
+                        :cxn-inventory '*propbank-grammar-ontonotes-ewt-core-roles*
+                        :fcg-configuration '((:replace-when-equivalent . nil)
+                                             (:learning-modes :core-roles)))     ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
 
-(comprehend-and-extract-frames (sentence-string (fifth *training-set*)) :cxn-inventory *propbank-grammar-ontonotes-core-leafs*)
-
+*propbank-grammar-ontonotes-ewt-core-roles*
 ;; Cleaning a grammar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -105,33 +103,38 @@ under different keys"
 ;; (defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
 
 
-(set-configuration *propbank-grammar-core-roles* :heuristics '(:minimize-path-length :nr-of-roles-integrated))
+(set-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics '(:edge-weight))
 
-(comprehend-and-extract-frames "Old Li Jingtang still tells visitors old war stories circulating in the Taihong Mountain area."
-                               :cxn-inventory *propbank-grammar-ontonotes-core-leafs*)
+                   ;'(:nr-of-roles-integrated :minimize-path-length)) ;:minimize-path-length
+(get-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics)
+
+(comprehend-and-extract-frames "First, Moses told the people every command in the law."
+                               :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles* :timeout 6000 )
+
 
 (comprehend-and-extract-frames "The children sent him a cake."
-                               :cxn-inventory *propbank-grammar-core-roles*)
+                               :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles*)
 
 (add-element (make-html *propbank-grammar-core-roles*))
 
 (loop for propbank-utterance in (subseq (shuffle *full-corpus*) 0 5)
        do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-core-roles*))
 
- (length *test-set*)
+
 
 
  ;; Evaluating a learnt grammar
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(comprehend-and-evaluate (subseq (shuffle (subseq *training-set* 0 1000)) 0 100)
-                          *propbank-grammar-ontonotes-core-leafs*
-                          :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
-                          :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
-                          :timeout 60 ;; :excluded-rolesets '("be.01" "be.02" "be.03" "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11")
-                          :per-frame-evaluation t)
+(comprehend-and-evaluate (subseq (shuffle *test-set*) 0 200)
+                         *propbank-grammar-ontonotes-core-leafs*
+                         :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
+                         :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
+                         :timeout 60
+                         :per-frame-evaluation t)
 
+(get-configuration *propbank-grammar-core-roles* :heuristics)
 (set-configuration *propbank-grammar-core-roles* :heuristics '( :nr-of-roles-integrated))
 (comprehend-and-extract-frames "You who watch as budgets are cut in education and health care while you militarize a police force ?" :cxn-inventory 
                                 *propbank-grammar-core-roles*)
@@ -157,3 +160,10 @@ under different keys"
                          :per-frame-evaluation t)
 
 (comprehend-and-extract-frames "I think the time of Russia's most urgent need is already over ." :cxn-inventory *propbank-grammar-core-roles-mini*)
+
+
+
+ ;; Collecting descriptive statistics
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+

@@ -307,13 +307,6 @@
                                   number-of-gold-standard-predictions) s)))
     ))
 
-
-           ;; collect (cons frame-name `((:precision . ,precision)
-           ;;                            (:recall . ,recall)
-           ;;                            (:f1-score . ,f1-score)
-           ;;                            (:nr-of-correct-predictions . ,number-of-correct-predictions)
-           ;;                            (:nr-of-predictions . ,number-of-grammar-predictions)
-           ;;                            (:nr-of-gold-standard-predictions . ,number-of-gold-standard-predictions))))))
       
   
 (defun correctly-predicted-index-p (index predicted-frame-element predicted-frame gold-frames include-word-sense)

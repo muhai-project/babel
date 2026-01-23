@@ -2,10 +2,9 @@
 
 
 (defmethod apply-heuristic ((node cip-node) (mode (eql :frequency)))
-  "Returns the frequency of the construction that was applied in the
-node, divided by 100 to account for large numbers."
+  "Returns the frequency of the construction that was applied."
   (let ((applied-cxn (get-original-cxn (car-applied-cxn (cipn-car node)))))
-    (/ (attr-val applied-cxn :score) 100)))
+    (attr-val applied-cxn :score)))
 
 
 (defmethod apply-heuristic ((node cip-node) (mode (eql :edge-weight)))
@@ -15,36 +14,36 @@ matching."
     ;;When the categorial network was used in matching:
     (let ((applied-cxn (get-original-cxn (car-applied-cxn (cipn-car node)))))
       
-      (cond ((attr-val applied-cxn :gram-category) ;;Lex->gram categorial link was used
+      (cond ((attr-val applied-cxn :argst-category) ;;Lex->gram categorial link was used
              (let* ((matched-neighbours
                      (loop for links-and-score in (get-data  (blackboard (construction-inventory node)) :matched-categorial-links)
-                           when (eq (caar links-and-score) (attr-val applied-cxn :gram-category))
+                           when (eq (caar links-and-score) (attr-val applied-cxn :argst-category))
                              collect (cdar links-and-score)))
-                    (lex-cat-used 
+                    (fe-cat-used 
                      (loop for matched-neighbour-cat in matched-neighbours
-                           when (neighbouring-categories-p (attr-val applied-cxn :gram-category)
+                           when (neighbouring-categories-p (attr-val applied-cxn :argst-category)
                                                            matched-neighbour-cat
                                                            (categorial-network (construction-inventory node))
                                                            :link-type 'lex-gram)
                              do (return matched-neighbour-cat))))
                ;;Retrieve the link weight as stored in the matched-categorial-link blackboard by FCG's unify-atom
-               (cdr (find (cons (attr-val applied-cxn :gram-category) lex-cat-used)
+               (cdr (find (cons (attr-val applied-cxn :argst-category) fe-cat-used)
                           (get-data (blackboard (construction-inventory node)) :matched-categorial-links)
                           :key #'car :test #'equalp))))
-            ((attr-val applied-cxn :sense-category) ;;Gram->sense categorial link was used
+            ((attr-val applied-cxn :roleset-category) ;;Gram->sense categorial link was used
              (let* ((matched-neighbours
                      (loop for links-and-score in (get-data  (blackboard (construction-inventory node)) :matched-categorial-links)
-                           when (eq (caar links-and-score) (attr-val applied-cxn :sense-category))
+                           when (eq (caar links-and-score) (attr-val applied-cxn :roleset-category))
                              collect (cdar links-and-score)))
-                    (gram-cat-used 
+                    (argst-cat-used 
                      (loop for matched-neighbour-cat in matched-neighbours
-                           when (neighbouring-categories-p (attr-val applied-cxn :sense-category)
+                           when (neighbouring-categories-p (attr-val applied-cxn :roleset-category)
                                                            matched-neighbour-cat
                                                            (categorial-network (construction-inventory node))
                                                            :link-type 'gram-sense)
                              do (return matched-neighbour-cat))))
                 ;;Retrieve the link weight as stored in the matched-categorial-link blackboard by FCG's unify-atom
-               (cdr (find (cons (attr-val applied-cxn :sense-category) gram-cat-used)
+               (cdr (find (cons (attr-val applied-cxn :roleset-category) argst-cat-used)
                           (get-data (blackboard (construction-inventory node)) :matched-categorial-links)
                           :key #'car :test #'equalp))))
             (t
@@ -63,7 +62,7 @@ matching."
   (let ((applied-cxn (get-original-cxn (car-applied-cxn (cipn-car node)))))
     (if (eql (attr-val applied-cxn :label) 'fcg-propbank::argument-structure-cxn)
       (let ((cxn-meaning (first (fcg-unit-feature-value (first (contributing-part applied-cxn)) 'meaning))))
-        (- (length cxn-meaning) 1))
+        (* (- (length cxn-meaning) 1) 1000))
       0)))
 
 
