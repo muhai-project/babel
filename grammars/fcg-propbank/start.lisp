@@ -102,23 +102,18 @@ under different keys"
 ;; (activate-monitor trace-fcg)
 ;; (defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
 
+;;(get-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics)
+;;(set-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics '(:edge-weight :nr-of-roles-integrated))
 
-(set-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics '(:edge-weight))
-
-                   ;'(:nr-of-roles-integrated :minimize-path-length)) ;:minimize-path-length
-(get-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics)
 
 (comprehend-and-extract-frames "First, Moses told the people every command in the law."
                                :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles* :timeout 6000 )
 
-
 (comprehend-and-extract-frames "The children sent him a cake."
                                :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles*)
 
-(add-element (make-html *propbank-grammar-core-roles*))
-
-(loop for propbank-utterance in (subseq (shuffle *full-corpus*) 0 5)
-       do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-core-roles*))
+(loop for propbank-utterance in (subseq (shuffle *training-set*) 0 5)
+       do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles*))
 
 
 
@@ -126,44 +121,50 @@ under different keys"
  ;; Evaluating a learnt grammar
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(set-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics '(:edge-weight :nr-of-roles-integrated)) ;:minimize-path-length
 
-(comprehend-and-evaluate (subseq (shuffle *test-set*) 0 200)
-                         *propbank-grammar-ontonotes-core-leafs*
+(comprehend-and-evaluate (subseq *test-set* 0 500)
+                         *propbank-grammar-ontonotes-ewt-core-roles*
                          :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
                          :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
                          :timeout 60
                          :per-frame-evaluation t)
 
-(get-configuration *propbank-grammar-core-roles* :heuristics)
-(set-configuration *propbank-grammar-core-roles* :heuristics '( :nr-of-roles-integrated))
-(comprehend-and-extract-frames "You who watch as budgets are cut in education and health care while you militarize a police force ?" :cxn-inventory 
-                                *propbank-grammar-core-roles*)
-(comprehend-and-extract-frames "I've seen a lot of matches this season , but I only watched up to the match where they lost to Bayern ." :cxn-inventory *propbank-grammar-core-roles*)
 
 
-
-(learn-propbank-grammar (subseq *training-set* 0 1000)
-                       #| :excluded-rolesets '("be.01" "be.02" "be.03"
-                                             "do.lv" "do.01" "do.02" "do.04" "do.11" "do.12" "done.08"
-                                             "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05" "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
-                                             "get.lv" "get.03" "get.06" "get.24")|#
-                        :cxn-inventory '*propbank-grammar-core-roles-mini*
-                        :fcg-configuration '((:replace-when-equivalent . nil)
-                                             (:learning-modes :core-roles)))
-
-
-(comprehend-and-evaluate (subseq (shuffle *test-set*) 0 1000)
-                         *propbank-grammar-core-roles*
-                         :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
-                         :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
-                         :timeout 60 :excluded-frames '("be" "have")
-                         :per-frame-evaluation t)
-
-(comprehend-and-extract-frames "I think the time of Russia's most urgent need is already over ." :cxn-inventory *propbank-grammar-core-roles-mini*)
-
+;;(cl-store::store *propbank-grammar-ontonotes-ewt-core-roles* "ontonotes-ewt-core-roles-w-hapaxes.fcg")
 
 
  ;; Collecting descriptive statistics
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Count nr of cxns per type:
+(loop with fe-cxns = 0
+      with argst-cxns = 0
+      with roleset-cxns = 0
+      for cxn in (constructions-list *propbank-grammar-ontonotes-ewt-core-roles*)
+      do (case (attr-val cxn :label)
+           (word-sense-cxn (incf roleset-cxns))
+           (argument-structure-cxn (incf argst-cxns))
+           (lexical-cxn (incf fe-cxns)))
+      finally (return (values fe-cxns argst-cxns roleset-cxns)))
 
+;; 9480 fe-cxns
+;; 21203 argst-cxns
+;; 8068 roleset-cxns
+
+
+;; Count nr of hapaxes: 18680 cxns
+;; op een totaal van 38751 cxns
+(loop with hapax-count = 0
+      for cxn in (constructions-list *propbank-grammar-ontonotes-ewt-core-roles*)
+      when (= (attr-val cxn :score) 1)
+        do (incf hapax-count)
+      finally (return hapax-count))
+
+(with-open-file (csv "./cxn-frequencies.csv"
+                       :if-does-not-exist :create
+                       :if-exists :supersede
+                       :direction :output)
+  (loop for cxn in (constructions-list *propbank-grammar-ontonotes-ewt-core-roles*)
+        do (write-line (format nil "~a, ~a, ~a" (name cxn) (attr-val cxn :score) (attr-val cxn :label))  csv)))
