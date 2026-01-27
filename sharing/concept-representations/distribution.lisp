@@ -20,7 +20,7 @@
 
 
 ;; Constructor
-(defmethod make-distribution ((feature-value string))
+(defmethod make-distribution ((feature-value symbol))
   (let* ((nr-of-samples 0)
          (distribution (make-instance 'categorical :nr-of-samples nr-of-samples)))
     (update-distribution distribution feature-value)
@@ -28,7 +28,7 @@
 
 ;; Update
 (defmethod update-distribution ((distribution categorical)
-                                (feature-value string))
+                                (feature-value symbol))
   ;; Step 1: increment total count
   (incf (nr-of-samples distribution))
   ;; Step 2: increase count of the observed category
@@ -41,6 +41,7 @@
 ;; Divergence
 (defmethod f-divergence ((distribution1 categorical)
                          (distribution2 categorical)
+                         (mode t)
                          &key
                          &allow-other-keys)
   ;; step 1: synchronisation
@@ -114,7 +115,7 @@
 ;; Constructor
 (defmethod make-distribution ((feature-value number))
   "Create a gaussian distribution that will be updated using Welford's online algorithm."
-  (let* ((M2 0.001) ;; TODO pass as argument with allow-other-keys
+  (let* ((M2 0.001)
          (nr-of-samples 1)
          (st-dev (sqrt (/ M2 nr-of-samples)))
          (mean feature-value))
@@ -142,6 +143,7 @@
 ;; Divergence
 (defmethod f-divergence ((distribution1 gaussian)
                          (distribution2 gaussian)
+                         (mode (eql :hellinger))
                          &key
                          &allow-other-keys)
   "Quantifies the hellinger distance between two probability distributions.

@@ -63,13 +63,35 @@
 
 At the time of writing (18/10/2022), the `distributions` package from LispStat is difficult to install.
 
-#### Problem 1
+#### Problem 1: gcc and clang
 
 When loading this package for the first time you might encounter an error concerning the Makefile of a dependency. The `distributions` package has a dependency called `cephes`. Building `cephes` requires `gcc`. Verify that you are using a correct `gcc` installation by typing `gcc --version`. For example, Mac OS Monterey by default uses `clang`(!!!) when calling `gcc`. Thus, use `brew` to install gcc and alter the symbolic `gcc` link to this true `gcc` installation.
 
-#### Problem 2
+#### Problem 2: special functions
 
 Another dependency of `distributions` is the `special-functions` package by LispStat. This `special-functions` package is available on the `quicklisp` servers. At the time of writing (18/10/2022), the current version available is completely out-of-date compared to the `github` repository. Therefore, we have added both `distributions` and `special-functions` to the `babel/libraries`.
+
+#### Problem 3: as and binutils
+
+If you get the following error:
+```
+Building #P"/.../quicklisp/dists/quicklisp/software/cephes.cl-20241012-git/scipy-cephes/libmd.so"
+cc -g -O2 -Wall -Wno-unused-function -fno-builtin -fPIC -include cephes.h -include math.h   -c -o mtherr.o mtherr.c
+debugger invoked on a UIOP/RUN-PROGRAM:SUBPROCESS-ERROR in thread #<THREAD tid=4043124 "main thread" RUNNING {10011B0133}>: Subprocess with command "make"
+ exited with error code 2
+```
+
+To figure out what is wrong, run `make` directly on `cd ~/quicklisp/dists/quicklisp/software/cephes.cl-20241012-git/scipy-cephes/Makefile`.
+
+If you then get the following error:
+
+```
+cc -g -O2 -Wall -Wno-unused-function -fno-builtin -fPIC -include cephes.h -include math.h   -c -o mtherr.o mtherr.c
+as: unrecognized option '--gdwarf-5'
+make: *** [<builtin>: mtherr.o] Error 1
+```
+
+This means the assembler (as) doesn’t support the --gdwarf-5 debugging flag. Likely, the assembler is older than what GCC expects. To update the assembler (as), which is part of the binutils package, either (for local installations) update the binutils package or (for running experiments on a cluster) loading a more recent version of binutils. For example, on VUB's hydra you can run the command `module spider binutils` and then load a newer version using `module load <module-name>`.
 
 <!-- ABOUT THE PROJECT -->
 

@@ -12,7 +12,6 @@
                :com.inuoe.jzon)
   :serial t
   :components ((:file "package")
-               (:file "utils")
                (:file "entity")
                (:file "concept")
                (:file "distribution")
