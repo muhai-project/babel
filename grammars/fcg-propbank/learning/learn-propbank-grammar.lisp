@@ -260,7 +260,7 @@ categorial network and returns it."
          (equivalent-cxn (find-cxn cxn-name cxn-inventory :hash-key (if (stringp lemma)
                                                                       (intern (upcase lemma) :fcg-propbank)
                                                                       lemma) :key #'name))
-         (roleset-category (intern (frame-name gold-frame) :fcg-propbank)))
+         (roleset-category (intern (upcase (frame-name gold-frame)) :fcg-propbank)))
     
     (if equivalent-cxn
       

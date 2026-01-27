@@ -17,7 +17,7 @@
                              (:file "frame-visualisation")
                              (:file "extract-frames")
                              (:file "comprehend")
-                             (:file "categorial-network-metrics"))
+                             (:file "categorial-network-metrics")))
                (:module annotation
                 :serial t
                 :components ((:file "conll-annotations-interface")

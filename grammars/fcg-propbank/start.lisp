@@ -74,7 +74,7 @@
 (comprehend-and-extract-frames "The children sent him a cake."
                                :cxn-inventory *propbank-grammar-core-roles*)
 
-(loop for propbank-utterance in (subseq *test-set* 1 2)
+(loop for propbank-utterance in (subseq *test-set* 2 5)
        do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-core-roles*))
 
 
@@ -91,17 +91,25 @@
                              *propbank-grammar-core-roles*))
 
 
+(pprint (rolesets-for-schema '((:arg0  np)
+                               (:v v)
+                               (:arg1 ?y)
+                               (:arg2  pp))
+                              *propbank-grammar-core-roles*))
 
 
+(pprint (find-schemata-for-roleset 'TELL.01 *propbank-grammar-core-roles*))
 
+
+(pprint (graph-utils::closest-nodes 'TELL.01 (fcg::graph (categorial-network *propbank-grammar-core-roles*))
+                                    :edge-type 'gram-sense))
 
  ;; Evaluating a learnt grammar
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(set-configuration *propbank-grammar-ontonotes-ewt-core-roles-full-corpus* :heuristics '(:edge-weight :nr-of-roles-integrated)) ;:minimize-path-length
 
-(comprehend-and-evaluate (subseq *test-set* 0 500)
-                         *propbank-grammar-ontonotes-ewt-core-roles*
+(comprehend-and-evaluate *test-set*
+                         *propbank-grammar-core-roles*
                          :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
                          :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
                          :timeout 60
