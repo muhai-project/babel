@@ -112,7 +112,7 @@ under different keys"
 (comprehend-and-extract-frames "The children sent him a cake."
                                :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles*)
 
-(loop for propbank-utterance in (subseq (shuffle *training-set*) 0 5)
+(loop for propbank-utterance in (subseq *test-set* 1 2)
        do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles*))
 
 
@@ -134,37 +134,3 @@ under different keys"
 
 ;;(cl-store::store *propbank-grammar-ontonotes-ewt-core-roles* "ontonotes-ewt-core-roles-w-hapaxes.fcg")
 
-
- ;; Collecting descriptive statistics
- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Count nr of cxns per type:
-(loop with fe-cxns = 0
-      with argst-cxns = 0
-      with roleset-cxns = 0
-      for cxn in (constructions-list *propbank-grammar-ontonotes-ewt-core-roles*)
-      do (case (attr-val cxn :label)
-           (word-sense-cxn (incf roleset-cxns))
-           (argument-structure-cxn (incf argst-cxns))
-           (lexical-cxn (incf fe-cxns)))
-      finally (return (values fe-cxns argst-cxns roleset-cxns)))
-
-;; 9480 fe-cxns
-;; 21203 argst-cxns
-;; 8068 roleset-cxns
-
-
-;; Count nr of hapaxes: 18680 cxns
-;; op een totaal van 38751 cxns
-(loop with hapax-count = 0
-      for cxn in (constructions-list *propbank-grammar-ontonotes-ewt-core-roles*)
-      when (= (attr-val cxn :score) 1)
-        do (incf hapax-count)
-      finally (return hapax-count))
-
-(with-open-file (csv "./cxn-frequencies.csv"
-                       :if-does-not-exist :create
-                       :if-exists :supersede
-                       :direction :output)
-  (loop for cxn in (constructions-list *propbank-grammar-ontonotes-ewt-core-roles*)
-        do (write-line (format nil "~a, ~a, ~a" (name cxn) (attr-val cxn :score) (attr-val cxn :label))  csv)))

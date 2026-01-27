@@ -4,7 +4,6 @@
 ;; Descriptive statistics of a learnt grammar   ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-*propbank-grammar-ontonotes-ewt-core-roles*
 
 (defun grammar-report (grammar)
   "Writes a report on the grammar to Output."
@@ -30,9 +29,9 @@
     (format t "   All cxns: ~a~%" total-nr-of-cxns)
     (format t "   Frame-evoking cxns: ~a~%" nr-of-fe-cxns)
     (format t "   Argument structure cxns: ~a~%" nr-of-argst-cxns )
-    (format t "   Roleset cxns: ~a~%~%" nr-of-roleset-cxns)
-
-    (format t "Frequency information:~%")
+    (format t "   Roleset cxns: ~a~%" nr-of-roleset-cxns)
+    (format t "~%---------------------------------------------------------------------------------~%~%")
+    (format t "Individual construction frequency information:~%")
     (format t "   All cxns: ~%" )
     (format t "      Absolute frequency: ~a ~%" (first sum-average-median-non-hapax-frequency))
     (format t "      Mean frequency: ~a ~%" (second sum-average-median-non-hapax-frequency))
@@ -51,17 +50,21 @@
     (format t "      Median frequency: ~a ~%" (third argst-cxn-sum-average-median-non-hapax-frequency))
     (format t "      Number of non-hapax cxns: ~a of ~a ~%" (fourth argst-cxn-sum-average-median-non-hapax-frequency) nr-of-argst-cxns)
 
-    
     (format t "   Roleset cxns: ~%" )
     (format t "      Absolute frequency: ~a ~%" (first roleset-cxn-sum-average-median-non-hapax-frequency))
     (format t "      Mean frequency: ~a ~%" (second roleset-cxn-sum-average-median-non-hapax-frequency))
     (format t "      Median frequency: ~a ~%" (third roleset-cxn-sum-average-median-non-hapax-frequency))
     (format t "      Number of non-hapax cxns: ~a of ~a ~%" (fourth roleset-cxn-sum-average-median-non-hapax-frequency) nr-of-roleset-cxns)
+    (format t "~%---------------------------------------------------------------------------------~%~%")
+    (format t "Construction network information:~%")
+    (format t "   Average degree (argst-roleset): ~a ~%" (average-degree grammar))
+    (format t "   Average degree (fe-roleset): ~a ~%" (average-degree grammar :edge-type 'lex-sense))
+    (format t "   Average degree (fe-argst): ~a ~%" (average-degree grammar :edge-type 'lex-gram))
     
     (format t "~%---------------------------------------------------------------------------------~%")
     ))
 
-(grammar-report *propbank-grammar-ontonotes-ewt-core-roles*)
+;; (grammar-report *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)
 
 (defun nr-of-cxns-of-type (grammar type)
   "Count nr of type in grammar."
@@ -79,21 +82,16 @@
                                 (median frequencies)
                                 (count-if #'(lambda (freq) (> freq 1)) frequencies)))))
         
-;;(sum-average-median-non-hapax-frequency *propbank-grammar-ontonotes-ewt-core-roles* :type 'word-sense-cxn)
+;; (sum-average-median-non-hapax-frequency *propbank-grammar-ontonotes-ewt-core-roles* :type 'word-sense-cxn)
 
-(defun average-degree (grammar)
+(defun average-degree (grammar &key (edge-type 'gram-sense))
   "Calculates average degree of grammar network."
-  (loop for value being the hash-values of (graph-utils::matrix (gethash 'gram-sense
-                                                                       (graph-utils::matrix
-                                                                        (fcg::graph (categorial-network grammar)))))
+  (loop for value being the hash-values of (graph-utils::matrix (gethash edge-type
+                                                                         (graph-utils::matrix
+                                                                          (fcg::graph (categorial-network grammar)))))
       collect (hash-table-count value) into degrees
-      finally (return (sort degrees #'>))))
+      finally (return (average degrees))))
         
-;; (average-degree *propbank-grammar-ontonotes-ewt-core-roles*)
-;; 4.4254856
-;; sum: 171492
+;; (average-degree *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)
 
-
-;; 5.858768
-;; sum: 171492
 

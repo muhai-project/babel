@@ -33,6 +33,8 @@
                         (comprehend-with-rolesets initial-cfs cxn-inventory selected-rolesets (sentence-string utterance) silent))
           (trivial-timeout:timeout-error (error)
             (values 'time-out 'time-out 'time-out)))
+      (wi:add-element `((h3 :style "margin-bottom:3px;") "Gold standard:"))
+      (add-element (make-html (propbank-frames utterance) :expand-initially t))
       (values meaning cip-node cip))))
 
 (defmethod propbank-comprehend ((utterance string) 
