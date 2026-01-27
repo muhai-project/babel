@@ -23,7 +23,8 @@
                              (:file "ewt-ontonotes-english")))
                (:module evaluation
                 :serial t
-                :components ((:file "evaluation")))
+                :components ((:file "evaluation")
+                             (:file "grammar-report")))
                (:module learning
                 :serial t
                 :components ((:file "utils")

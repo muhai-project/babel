@@ -6,6 +6,16 @@
 ;;                                                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun create-train-test-splits (full-corpus &optional (size-of-test-set 1000))
+  "Create train/test splits by randomly selecting size-of-test-set
+sentences out of full corpus to serve as test sentences, keeping the
+remaining sentences for training."
+  (setf full-corpus (shuffle full-corpus))
+  (values (subseq full-corpus size-of-test-set) ;;training set
+          (subseq full-corpus 0 size-of-test-set)) ;;test set
+  )
+
+
 (defun learn-and-evaluate-sentence (conll-sentence training-configuration)
   (format t "~%~%~a~%" (sentence-string conll-sentence))
   (multiple-value-bind (compatible-rolesets incompatible-rolesets)

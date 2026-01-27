@@ -43,8 +43,8 @@
 (pprint (find-constructions-by-schema '((:arg0  np)
                                         (:v v)
                                         (:arg1 np)
-                                        (:arg2 . pp\(to\)))
-                                      *propbank-ontonotes-learned-cxn-inventory-no-aux-all-strategies*
+                                        (:arg2  pp))
+                                      *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*
                                       :collect-fn #'name))
 
 
@@ -52,8 +52,8 @@
 (pprint (find-constructions-by-schema '((:arg0  np)
                                         (:v v)
                                         (:arg1 np)
-                                        (:arg2 . pp\(to\)))
-                                      *restored-grammar*
+                                        (:arg2 pp))
+                                      *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*
                                       :collect-fn #'(lambda (cxn) (fcg::description cxn))))
 
 
@@ -62,7 +62,7 @@
                                         (:v v)
                                         (:arg2 np)
                                         (:arg1 np))
-                                      *restored-grammar*
+                                      *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*
                                       :collect-fn #'name))
 
 ;; Find example utterances of the dative schema:
@@ -70,32 +70,29 @@
                                         (:v v)
                                         (:arg2 np)
                                         (:arg1 np))
-                                      *restored-grammar*
+                                      *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*
                                       :collect-fn #'(lambda (cxn) (fcg::description cxn)))) |#
-
-
-
 
 
 ;; Finding constructions by schema
 ;;---------------------------------------------------------------------------------------
 
-(defun lex-items-for-schema (schema cxn-inventory &key (edge-type 'lex-gram ))
+(defun rolesets-for-schema (schema cxn-inventory &key (edge-type 'gram-sense ))
   "Find all lexical items that fill the V slot of the given schema and
 return them acccording to the edge weights."
   (let* ((gram-categories (find-constructions-by-schema schema cxn-inventory
-                                                       :collect-fn #'(lambda (cxn)
-                                                                       (attr-val cxn :gram-category))))
+                                                        :collect-fn #'(lambda (cxn)
+                                                                        (attr-val cxn :argst-category))))
          (graph (fcg::graph (categorial-network cxn-inventory)))
-        (lex-items-with-frequency (loop with lexical-items-with-frequency = (make-hash-table)
-                                        for g in gram-categories
-                                        for node-vector = (graph-utils::node-vector g graph :edge-type edge-type)
-                                        do (loop for lex-item being the hash-keys in node-vector using (hash-value frequency)
-                                                 for lex-item-symbol = (graph-utils::lookup-node graph lex-item)
-                                                 if (gethash lex-item-symbol lexical-items-with-frequency)
-                                                 do (incf (gethash lex-item-symbol lexical-items-with-frequency) frequency)
-                                                 else do (setf (gethash lex-item-symbol lexical-items-with-frequency) frequency))
-                                        finally (return lexical-items-with-frequency))))
+         (lex-items-with-frequency (loop with lexical-items-with-frequency = (make-hash-table)
+                                         for g in gram-categories
+                                         for node-vector = (graph-utils::node-vector  g graph :edge-type edge-type)
+                                         do (loop for lex-item being the hash-keys in node-vector using (hash-value frequency)
+                                                  for lex-item-symbol = (graph-utils::lookup-node graph lex-item)
+                                                  if (gethash lex-item-symbol lexical-items-with-frequency)
+                                                    do (incf (gethash lex-item-symbol lexical-items-with-frequency) frequency)
+                                                  else do (setf (gethash lex-item-symbol lexical-items-with-frequency) frequency))
+                                         finally (return lexical-items-with-frequency))))
     
     (loop for lex-item being the hash-keys in lex-items-with-frequency using (hash-value frequency)
           collect (cons lex-item frequency) into lex-items-with-frequency-list
@@ -103,25 +100,25 @@ return them acccording to the edge weights."
           
 #|
 ;; Lexical items that are used in the to-dative schema (with edge weight):
-(pprint (lex-items-for-schema '((:arg0  np)
+(pprint (rolesets-for-schema '((:arg0  np)
                                 (:v v)
                                 (:arg1 ?y)
-                                (:arg2  . pp\(to\)))
-                              *restored-grammar*))
+                                (:arg2  pp))
+                              *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*))
 
 
 ;; Lexical items that are used in the ditransitive schema (with edge weight):
-(pprint (lex-items-for-schema '((:arg0  np)
+(pprint (rolesets-for-schema '((:arg0  np)
                                 (:v v)
                                 (:arg2 np)
-                                (:arg1  ?z))
-                              *restored-grammar*))
+                                (:arg1  np))
+                              *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*))
 
 
 ;; Lexical items used in ergative/passive schema:
-(pprint (lex-items-for-schema '((:arg1 np)
+(pprint (rolesets-for-schema '((:arg1 np)
                                 (:v v))
-                              *restored-grammar*)) |#
+                              *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)) |#
 
 
 
@@ -135,38 +132,37 @@ return them acccording to the edge weights."
                                (mkstr (cdr slot))) into schema-string
         finally (return (intern (format nil "~{~a~^+~}" schema-string)))))
 
-;;(make-symbol-for-schema '((arg0 np) (v v) (arg2 . pp)))
+;;(make-symbol-for-schema '((arg0 np) (v v) (arg2 pp)))
         
 
-(defun find-schemata-for-lex-item (lex-item cxn-inventory &key (edge-type 'lex-gram))
+(defun find-schemata-for-roleset (roleset-cat cxn-inventory &key (edge-type 'gram-sense))
   "Find all schemata that a lexical item occurred in and rank them by
 the sum of their edge weights."
   (loop with categorial-network = (categorial-network cxn-inventory)
         with schemata = (make-hash-table)
         for gram-category in (graph-utils::neighbors (fcg::graph categorial-network)
-                                                     lex-item :return-ids? nil :edge-type edge-type)
+                                                     roleset-cat :return-ids? nil :edge-type edge-type)
         for cxn = (find gram-category (gethash nil (constructions-hash-table cxn-inventory))
-                        :key #'(lambda (c) (attr-val c :gram-category)))
+                        :key #'(lambda (c) (attr-val c :argst-category)))
         when cxn
         do (let ((schema-key (make-symbol-for-schema (attr-val cxn :schema))))
           (if (gethash schema-key schemata)
             (setf (gethash schema-key schemata) (+ (gethash schema-key schemata)
                                               (graph-utils:edge-weight (fcg::graph categorial-network)
-                                                                       lex-item gram-category)))
+                                                                       roleset-cat gram-category)))
             (setf (gethash schema-key schemata) (graph-utils:edge-weight (fcg::graph categorial-network)
-                                                                       lex-item gram-category))))
+                                                                       roleset-cat gram-category))))
         finally (return (loop for schema being the hash-keys in schemata using (hash-value frequency)
                               collect (cons schema frequency) into schemata-w-frequency
                               finally (return (sort schemata-w-frequency #'> :key #'cdr))))))
 
 
 ;; Inspect first the nodes of the categorial network to get node ids:
-;(defparameter *categorial-network* (categorial-network *restored-grammar*))
+;(defparameter *categorial-network* (categorial-network *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*))
 
 
 ;; Find all schemata for the verb lemma 'explain':
-;(pprint (find-schemata-for-lex-item 'propbank-grammar::EXPLAIN\(V\)-34 *restored-grammar*))
-
+;(pprint (find-schemata-for-roleset 'TELL.01-1553 *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*))
 
 
 

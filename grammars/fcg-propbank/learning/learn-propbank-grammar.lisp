@@ -7,22 +7,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def-fcg-constructions propbank-learned
-  :visualization-configurations ((:show-constructional-dependencies . nil)
+  :visualization-configurations ((:show-constructional-dependencies . t)
                                  (:show-categorial-network . nil)
                                  (:hide-attributes . t)
                                  (:hide-features . nil))
   :fcg-configurations ((:node-tests :check-double-role-assignment)
-                      (:parse-goal-tests :no-valid-children)
-                      (:max-nr-of-nodes . 100)
-                      (:de-render-mode . :de-render-constituents-dependents)
-                      (:construction-inventory-processor-mode . :heuristic-search)
-                      (:search-algorithm . :best-first)
-                      (:heuristic-value-mode . :sum-heuristics-and-parent)
-                      (:heuristics :minimize-path-length)   ;; Additional heuristics: :prefer-local-bindings :nr-of-units-matched
-                      (:cxn-supplier-mode . :hashed-categorial-network)
-                      (:sort-cxns-before-application . nil)
-                      (:node-expansion-mode . :full-expansion)
-                      (:hash-mode . :hash-lemma))
+                       (:parse-goal-tests :no-valid-children)
+                       (:max-nr-of-nodes . 200)
+                       (:de-render-mode . :de-render-constituents-dependents)
+                       (:construction-inventory-processor-mode . :heuristic-search)
+                       (:search-algorithm . :best-first)
+                       (:heuristic-value-mode . :sum-heuristics-and-parent)
+                       (:heuristics :edge-weight :nr-of-roles-integrated)
+                       (:cxn-supplier-mode . :hashed-categorial-network)
+                       (:sort-cxns-before-application . nil)
+                       (:node-expansion-mode . :full-expansion)
+                       (:hash-mode . :hash-lemma))
   :hierarchy-features (constituents dependents)
   :feature-types ((constituents sequence)
                   (dependents sequence)
@@ -260,7 +260,7 @@ categorial network and returns it."
          (equivalent-cxn (find-cxn cxn-name cxn-inventory :hash-key (if (stringp lemma)
                                                                       (intern (upcase lemma) :fcg-propbank)
                                                                       lemma) :key #'name))
-         (roleset-category (intern (symbol-name (make-id (frame-name gold-frame))) :fcg-propbank)))
+         (roleset-category (intern (symbol-name (frame-name gold-frame)) :fcg-propbank)))
     
     (if equivalent-cxn
       

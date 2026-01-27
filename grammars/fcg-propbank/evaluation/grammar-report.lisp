@@ -13,12 +13,15 @@
 
 
   (let ((sum-average-median-non-hapax-frequency (multiple-value-list (sum-average-median-non-hapax-frequency grammar)))
-        (fe-cxn-sum-average-median-non-hapax-frequency (multiple-value-list (sum-average-median-non-hapax-frequency grammar
-                                                                                                                    :type 'lexical-cxn)))
-        (argst-cxn-sum-average-median-non-hapax-frequency (multiple-value-list (sum-average-median-non-hapax-frequency grammar
-                                                                                                                       :type 'argument-structure-cxn)))
-        (roleset-cxn-sum-average-median-non-hapax-frequency (multiple-value-list (sum-average-median-non-hapax-frequency grammar
-                                                                                                                         :type 'word-sense-cxn)))
+        (fe-cxn-sum-average-median-non-hapax-frequency (multiple-value-list
+                                                        (sum-average-median-non-hapax-frequency grammar
+                                                                                                :type 'lexical-cxn)))
+        (argst-cxn-sum-average-median-non-hapax-frequency (multiple-value-list
+                                                           (sum-average-median-non-hapax-frequency grammar
+                                                                                                   :type 'argument-structure-cxn)))
+        (roleset-cxn-sum-average-median-non-hapax-frequency (multiple-value-list
+                                                             (sum-average-median-non-hapax-frequency grammar
+                                                                                                     :type 'word-sense-cxn)))
         (nr-of-fe-cxns (nr-of-cxns-of-type grammar 'lexical-cxn))
         (nr-of-argst-cxns (nr-of-cxns-of-type grammar 'argument-structure-cxn))
         (nr-of-roleset-cxns (nr-of-cxns-of-type grammar 'word-sense-cxn))

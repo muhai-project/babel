@@ -36,21 +36,22 @@
                                     (test-split *ewt-corpus-annotated-with-init-ts*)
                                     (dev-split *ewt-corpus-annotated-with-init-ts*)))
 
-(defparameter *training-set* (append (train-split *ontonotes-corpus-annotated-with-init-ts*)
-                                     (dev-split *ontonotes-corpus-annotated-with-init-ts*)
-                                     (train-split *ewt-corpus-annotated-with-init-ts*)
-                                     (dev-split *ewt-corpus-annotated-with-init-ts*)))
+(defun create-train-test-splits (full-corpus &optional (size-of-test-set 1000))
+  "Create train/test splits by randomly selecting size-of-test-set
+sentences out of full corpus to serve as test sentences, keeping the
+remaining sentences for training."
+  (setf full-corpus (shuffle full-corpus))
+  (values (subseq full-corpus size-of-test-set) ;;training set
+          (subseq full-corpus 0 size-of-test-set)) ;;test set
+  )
 
-(defparameter *test-set* (append (test-split *ontonotes-corpus-annotated-with-init-ts*)
-                                 (test-split *ewt-corpus-annotated-with-init-ts*)))
+(multiple-value-bind (training-set test-set)
+    (create-train-test-splits *full-corpus* 1000)
+  (defparameter  *training-set* training-set)
+  (defparameter *test-set* test-set))
 
 
 (learn-propbank-grammar *training-set*
-                       #| :excluded-rolesets '("be.01" "be.02" "be.03"
-                                             "do.lv" "do.01" "do.02" "do.04" "do.11" "do.12" "done.08"
-                                             "have.lv" "have.01" "have.02" "have.03" "have.04" "have.05"
-                                             "have.06" "have.07" "have.08" "have.09" "have.10" "have.11"
-                                             "get.lv" "get.03" "get.06" "get.24")|#
                         :cxn-inventory '*propbank-grammar-ontonotes-ewt-core-roles*
                         :fcg-configuration '((:replace-when-equivalent . nil)
                                              (:learning-modes :core-roles)))     ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
@@ -110,7 +111,10 @@ under different keys"
                                :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles* :timeout 6000 )
 
 (comprehend-and-extract-frames "The children sent him a cake."
-                               :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles*)
+                               :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)
+
+(comprehend-and-extract-frames "Mary sent the letter to her cousin."
+                               :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)
 
 (loop for propbank-utterance in (subseq *test-set* 1 2)
        do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles*))
@@ -121,7 +125,7 @@ under different keys"
  ;; Evaluating a learnt grammar
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(set-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics '(:edge-weight :nr-of-roles-integrated)) ;:minimize-path-length
+(set-configuration *propbank-grammar-ontonotes-ewt-core-roles-full-corpus* :heuristics '(:edge-weight :nr-of-roles-integrated)) ;:minimize-path-length
 
 (comprehend-and-evaluate (subseq *test-set* 0 500)
                          *propbank-grammar-ontonotes-ewt-core-roles*
