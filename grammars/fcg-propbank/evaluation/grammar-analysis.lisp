@@ -13,19 +13,6 @@
 ;; - Find closest lexical items for a given lexical item
 
 
-
-;; Restore a grammar to analyse:
-;;---------------------------------------------------------------------------------------
-
-#|(defparameter *restored-grammar*
-  (restore (babel-pathname :directory '("grammars" "propbank-english" "grammars")
-                           :name "propbank-grammar-ontonotes-ewt-cleaned-300"
-                           :type "fcg")))|#
-
-
-
-
-
 ;; Finding constructions by schema
 ;;---------------------------------------------------------------------------------------
 
@@ -171,6 +158,6 @@ the sum of their edge weights."
 ;;---------------------------------------------------------------------------------------
 
 ;; Inspect first the nodes of the categorial network to get node ids:
-;; (defparameter *th* (type-hierarchies:get-type-hierarchy *restored-grammar*))
+;; (defparameter *cxn-network* (categorial-network *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*))
 
-;; (pprint (closest-nodes 'propbank-english::EXPLAIN\(V\)-73 (graph *th*) :edge-type 'propbank-english::lex-gram))
+;; (pprint (graph-utils::closest-nodes  'TELL.01-1553 (fcg::graph *cxn-network*) :edge-type 'gram-sense))

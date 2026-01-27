@@ -7,7 +7,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def-fcg-constructions propbank-learned
-  :visualization-configurations ((:show-constructional-dependencies . t)
+  :visualization-configurations ((:show-constructional-dependencies . nil)
                                  (:show-categorial-network . nil)
                                  (:hide-attributes . t)
                                  (:hide-features . nil))
@@ -260,7 +260,7 @@ categorial network and returns it."
          (equivalent-cxn (find-cxn cxn-name cxn-inventory :hash-key (if (stringp lemma)
                                                                       (intern (upcase lemma) :fcg-propbank)
                                                                       lemma) :key #'name))
-         (roleset-category (intern (symbol-name (frame-name gold-frame)) :fcg-propbank)))
+         (roleset-category (intern (frame-name gold-frame) :fcg-propbank)))
     
     (if equivalent-cxn
       

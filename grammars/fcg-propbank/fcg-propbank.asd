@@ -16,7 +16,8 @@
                              (:file "heuristics")
                              (:file "frame-visualisation")
                              (:file "extract-frames")
-                             (:file "comprehend")))
+                             (:file "comprehend")
+                             (:file "categorial-network-metrics"))
                (:module annotation
                 :serial t
                 :components ((:file "conll-annotations-interface")
@@ -24,7 +25,8 @@
                (:module evaluation
                 :serial t
                 :components ((:file "evaluation")
-                             (:file "grammar-report")))
+                             (:file "grammar-report")
+                             (:file "grammar-analysis")))
                (:module learning
                 :serial t
                 :components ((:file "utils")

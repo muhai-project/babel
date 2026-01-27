@@ -24,11 +24,10 @@
 
 
 
-
 ;; Learning grammars from the annotated data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
+;; Append all splits from OntoNotes and EWT corpora
 (defparameter *full-corpus* (append (train-split *ontonotes-corpus-annotated-with-init-ts*)
                                     (test-split *ontonotes-corpus-annotated-with-init-ts*)
                                     (dev-split *ontonotes-corpus-annotated-with-init-ts*)
@@ -36,27 +35,87 @@
                                     (test-split *ewt-corpus-annotated-with-init-ts*)
                                     (dev-split *ewt-corpus-annotated-with-init-ts*)))
 
-(defun create-train-test-splits (full-corpus &optional (size-of-test-set 1000))
-  "Create train/test splits by randomly selecting size-of-test-set
-sentences out of full corpus to serve as test sentences, keeping the
-remaining sentences for training."
-  (setf full-corpus (shuffle full-corpus))
-  (values (subseq full-corpus size-of-test-set) ;;training set
-          (subseq full-corpus 0 size-of-test-set)) ;;test set
-  )
 
+(defparameter *training-set* nil)
+(defparameter *test-set* nil)
+
+;; Randomly select 1000 sentences from the full corpus as test sentences,
+;; while using the remaining sentences for learning the grammar
 (multiple-value-bind (training-set test-set)
     (create-train-test-splits *full-corpus* 1000)
-  (defparameter  *training-set* training-set)
-  (defparameter *test-set* test-set))
+  (setf  *training-set* training-set)
+  (setf *test-set* test-set))
 
-
+;; Learn a new grammar for the core roles in the PropBank annotation,
+;; do not replace equivalent cxns but update frequency when the same cxn would be learnt
 (learn-propbank-grammar *training-set*
-                        :cxn-inventory '*propbank-grammar-ontonotes-ewt-core-roles*
+                        :cxn-inventory '*propbank-grammar-core-roles*
                         :fcg-configuration '((:replace-when-equivalent . nil)
-                                             (:learning-modes :core-roles)))     ;:argm-leaf :argm-pp :argm-sbar :argm-phrase-with-string
+                                             (:learning-modes :core-roles)))
 
-*propbank-grammar-ontonotes-ewt-core-roles*
+;; Optionally, store the grammar for later reuse
+(cl-store:store *propbank-grammar-core-roles*
+                (babel-pathname :directory '(".tmp")
+                                :name (mkstr (downcase (name *propbank-grammar-core-roles*)))
+                                :type "fcg"))
+
+;; Using a learnt grammar
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (activate-monitor trace-fcg)
+;; (defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
+
+;;(get-configuration *propbank-grammar-core-roles* :heuristics)
+;;(set-configuration *propbank-grammar-core-roles* :heuristics '(:edge-weight :nr-of-roles-integrated))
+
+(comprehend-and-extract-frames "First, Moses told the people every command in the law."
+                               :cxn-inventory *propbank-grammar-core-roles*)
+
+(comprehend-and-extract-frames "The children sent him a cake."
+                               :cxn-inventory *propbank-grammar-core-roles*)
+
+(loop for propbank-utterance in (subseq *test-set* 1 2)
+       do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-core-roles*))
+
+
+;; Inspecting a learnt grammar and its network
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(grammar-report *propbank-grammar-core-roles*)
+
+
+(pprint (rolesets-for-schema '((:arg0  np)
+                               (:v v)
+                               (:arg2 np)
+                               (:arg1  np))
+                             *propbank-grammar-core-roles*))
+
+
+
+
+
+
+ ;; Evaluating a learnt grammar
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(set-configuration *propbank-grammar-ontonotes-ewt-core-roles-full-corpus* :heuristics '(:edge-weight :nr-of-roles-integrated)) ;:minimize-path-length
+
+(comprehend-and-evaluate (subseq *test-set* 0 500)
+                         *propbank-grammar-ontonotes-ewt-core-roles*
+                         :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
+                         :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
+                         :timeout 60
+                         :per-frame-evaluation t)
+
+
+
+;;(cl-store::store *propbank-grammar-ontonotes-ewt-core-roles* "ontonotes-ewt-core-roles-w-hapaxes.fcg")
+
+
+
+
+
+
 ;; Cleaning a grammar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -94,47 +153,3 @@ under different keys"
   )
 
 (delete-have-and-be-cxns *propbank-grammar-core-roles*)
-
-
-
-;; Using a learnt grammar
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; (activate-monitor trace-fcg)
-;; (defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
-
-;;(get-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics)
-;;(set-configuration *propbank-grammar-ontonotes-ewt-core-roles* :heuristics '(:edge-weight :nr-of-roles-integrated))
-
-
-(comprehend-and-extract-frames "First, Moses told the people every command in the law."
-                               :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles* :timeout 6000 )
-
-(comprehend-and-extract-frames "The children sent him a cake."
-                               :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)
-
-(comprehend-and-extract-frames "Mary sent the letter to her cousin."
-                               :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)
-
-(loop for propbank-utterance in (subseq *test-set* 1 2)
-       do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-ontonotes-ewt-core-roles*))
-
-
-
-
- ;; Evaluating a learnt grammar
- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(set-configuration *propbank-grammar-ontonotes-ewt-core-roles-full-corpus* :heuristics '(:edge-weight :nr-of-roles-integrated)) ;:minimize-path-length
-
-(comprehend-and-evaluate (subseq *test-set* 0 500)
-                         *propbank-grammar-ontonotes-ewt-core-roles*
-                         :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
-                         :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
-                         :timeout 60
-                         :per-frame-evaluation t)
-
-
-
-;;(cl-store::store *propbank-grammar-ontonotes-ewt-core-roles* "ontonotes-ewt-core-roles-w-hapaxes.fcg")
-
