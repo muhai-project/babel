@@ -67,15 +67,15 @@
 
 ;;(get-configuration *propbank-grammar-core-roles* :heuristics)
 ;;(set-configuration *propbank-grammar-core-roles* :heuristics '(:edge-weight :nr-of-roles-integrated))
-
+(set-configuration (visualization-configuration *propbank-grammar-core-roles*) :show-constructional-dependencies nil)
 (comprehend-and-extract-frames "First, Moses told the people every command in the law."
                                :cxn-inventory *propbank-grammar-core-roles*)
 
 (comprehend-and-extract-frames "The children sent him a cake."
                                :cxn-inventory *propbank-grammar-core-roles*)
 
-(loop for propbank-utterance in (subseq *test-set* 2 5)
-       do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-core-roles*))
+(loop for propbank-utterance in (subseq *test-set* 2 4)
+       do (comprehend-and-extract-frames propbank-utterance :cxn-inventory *propbank-grammar-core-roles* :timeout 90 :silent nil))
 
 
 ;; Inspecting a learnt grammar and its network
@@ -90,7 +90,6 @@
                                (:arg1  np))
                              *propbank-grammar-core-roles*))
 
-
 (pprint (rolesets-for-schema '((:arg0  np)
                                (:v v)
                                (:arg1 ?y)
@@ -100,7 +99,6 @@
 
 (pprint (find-schemata-for-roleset 'TELL.01 *propbank-grammar-core-roles*))
 
-
 (pprint (graph-utils::closest-nodes 'TELL.01 (fcg::graph (categorial-network *propbank-grammar-core-roles*))
                                     :edge-type 'gram-sense))
 
@@ -108,56 +106,9 @@
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(comprehend-and-evaluate *test-set*
-                         *propbank-grammar-core-roles*
-                         :core-roles-only t :include-word-sense t :include-timed-out-sentences nil
-                         :include-sentences-with-incomplete-role-constituent-mapping nil :silent nil
-                         :timeout 60
-                         :per-frame-evaluation t)
-
-
-
-;;(cl-store::store *propbank-grammar-ontonotes-ewt-core-roles* "ontonotes-ewt-core-roles-w-hapaxes.fcg")
-
-
-
-
-
-
-;; Cleaning a grammar
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;delete be(v) en have(v) cxns
-
-(defun delete-have-and-be-cxns (grammar)
-  "Delete all constructions under the hash keys 'be' and 'have',
-together with all constructions for 'be' and 'have' that are stored
-under different keys"
-  (format t "Nr of cxns before cleaning (FCG-2): ~a ~%" (size grammar))
-  (format t "Nr of cxns before cleaning (FCG-1): ~a ~%" (size (processing-cxn-inventory grammar)))
-  
-  (remhash 'be (constructions-hash-table grammar))
-  (remhash 'be (constructions-hash-table (processing-cxn-inventory grammar)))
-  (remhash 'have (constructions-hash-table grammar))
-  (remhash 'have (constructions-hash-table (processing-cxn-inventory grammar)))
-  
-  (loop for v being each hash-values of (constructions-hash-table grammar) using (hash-key k)
-        for remaining-cxns = (loop for cxn in v
-                                   unless (or (search "BE." (subseq (mkstr (name cxn)) 0 3))
-                                              (search "HAVE." (mkstr (name cxn))))
-                                   collect cxn)
-        do (setf (gethash k (constructions-hash-table grammar)) remaining-cxns))
-
-  (loop for v being each hash-values of (constructions-hash-table (processing-cxn-inventory grammar)) using (hash-key k)
-        for remaining-cxns = (loop for cxn in v
-                                   unless (or (search "BE." (subseq (mkstr (name cxn)) 0 3))
-                                              (search "HAVE." (mkstr (name cxn))))
-                                   collect cxn)
-        do (setf (gethash k (constructions-hash-table (processing-cxn-inventory grammar))) remaining-cxns))
-
-  (format t "Nr of cxns after cleaning (FCG-2): ~a ~%" (size grammar))
-  (format t "Nr of cxns after cleaning (FCG-1): ~a ~%" (size (processing-cxn-inventory grammar)))
-
-  )
-
-(delete-have-and-be-cxns *propbank-grammar-core-roles*)
+(comprehend-and-evaluate *test-set* *propbank-grammar-core-roles*
+                         :core-roles-only t :include-word-sense t
+                         :include-timed-out-sentences t
+                         :include-sentences-with-incomplete-role-constituent-mapping t
+                         :timeout 90 :silent nil
+                         :per-frame-evaluation t) ;;:only-evaluate t

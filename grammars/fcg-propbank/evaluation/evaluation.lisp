@@ -42,32 +42,26 @@ remaining sentences for training."
                                                            (excluded-frames nil)
                                                            (include-word-sense t) (include-timed-out-sentences t)
                                                            (include-sentences-with-incomplete-role-constituent-mapping t)
-                                                           (silent nil) (per-frame-evaluation nil))
+                                                           (silent nil) (per-frame-evaluation nil) (only-evaluate nil))
   (let ((output-file (babel-pathname :directory '(".tmp")
                                      :name "results"
                                      :type "store")))
 
-    (evaluate-propbank-corpus list-of-propbank-sentences cxn-inventory :output-file output-file :timeout timeout :silent silent)
+    (unless only-evaluate
+      (evaluate-propbank-corpus list-of-propbank-sentences cxn-inventory :output-file output-file :timeout timeout :silent silent))
 
     (let ((predictions (cl-store:restore (babel-pathname :directory '(".tmp")
-                                                :name "results"
-                                                :type "store"))))
-      (if per-frame-evaluation
-        (evaluate-predictions-per-frame predictions
-                                        :core-roles-only core-roles-only
-                                        :selected-rolesets selected-rolesets
-                                        :excluded-frames excluded-frames
-                                        :include-word-sense include-word-sense 
-                                        :include-timed-out-sentences include-timed-out-sentences
-                                        :include-sentences-with-incomplete-role-constituent-mapping include-sentences-with-incomplete-role-constituent-mapping)
-        (evaluate-predictions predictions
-                              :core-roles-only core-roles-only
-                              :selected-rolesets selected-rolesets
-                              :excluded-frames excluded-frames
-                              :include-word-sense include-word-sense 
-                              :include-timed-out-sentences include-timed-out-sentences
-                              :silent silent
-                              :include-sentences-with-incomplete-role-constituent-mapping include-sentences-with-incomplete-role-constituent-mapping)))))
+                                                         :name "results"
+                                                         :type "store"))))
+      (evaluate-predictions predictions
+                            :core-roles-only core-roles-only
+                            :selected-rolesets selected-rolesets
+                            :excluded-frames excluded-frames
+                            :include-word-sense include-word-sense 
+                            :include-timed-out-sentences include-timed-out-sentences
+                            :silent silent
+                            :per-frame-evaluation per-frame-evaluation
+                            :include-sentences-with-incomplete-role-constituent-mapping include-sentences-with-incomplete-role-constituent-mapping))))
  
 
 (defun evaluate-propbank-corpus (list-of-propbank-sentences cxn-inventory &key (output-file nil) (timeout 60) (silent t))
@@ -93,8 +87,10 @@ remaining sentences for training."
           into evaluation
           finally (cl-store:store evaluation output-file))))
 
-(defun evaluate-predictions (predictions &key (core-roles-only t) (selected-rolesets nil) (include-word-sense t) (include-timed-out-sentences t) (excluded-frames nil) (include-sentences-with-incomplete-role-constituent-mapping t) (silent nil))
+
+(defun evaluate-predictions (predictions &key (core-roles-only t) (selected-rolesets nil) (include-word-sense t) (include-timed-out-sentences t) (excluded-frames nil) (include-sentences-with-incomplete-role-constituent-mapping t) (silent nil) (per-frame-evaluation t))
   "Computes precision, recall and F1 score for a given list of predictions."
+  ;; Evaluate grammar predictions on the test set in terms of precision, recall and F1 score (word-level)
   (loop for (sentence annotation solution) in predictions
         when (and (or include-timed-out-sentences
                       (not (eql solution 'time-out)))
@@ -185,19 +181,19 @@ remaining sentences for training."
                   (unless silent
                     (format t "~%~%~%############## EVALUATION RESULTS ##############~%")
                     (format t "~a" evaluation-result))
-                  (return evaluation-result))))
+                  (return evaluation-result)))
 
-
+  ;;Evaluate predictions on a frame-level
+  (when per-frame-evaluation
+    (evaluate-predictions-per-frame predictions :core-roles-only core-roles-only :selected-rolesets selected-rolesets
+                                    :include-word-sense include-word-sense :include-timed-out-sentences include-timed-out-sentences
+                                    :excluded-frames excluded-frames :include-sentences-with-incomplete-role-constituent-mapping include-sentences-with-incomplete-role-constituent-mapping)))
 
 
 (defun evaluate-predictions-per-frame (predictions &key (core-roles-only t) (selected-rolesets nil)
                                                    (include-word-sense t) (include-timed-out-sentences t) 
                                                    (excluded-frames nil) (include-sentences-with-incomplete-role-constituent-mapping t))
-  "Computes precision, recall and F1 score for a given list of predictions."
-
-  (evaluate-predictions predictions :core-roles-only core-roles-only :selected-rolesets selected-rolesets :include-word-sense include-word-sense
-                        :include-word-sense include-word-sense :include-timed-out-sentences include-timed-out-sentences
-                        :excluded-frames excluded-frames :include-sentences-with-incomplete-role-constituent-mapping include-sentences-with-incomplete-role-constituent-mapping)
+  "Computes precision, recall and F1 score for a given list of predictions on a frame level."
   
   (let ((number-of-gold-standard-predictions-per-frame (make-hash-table))
         (number-of-grammar-predictions-per-frame (make-hash-table))
@@ -315,11 +311,9 @@ remaining sentences for training."
                                   f1-score
                                   number-of-correct-predictions
                                   number-of-grammar-predictions
-                                  number-of-gold-standard-predictions) s)))
-    ))
+                                  number-of-gold-standard-predictions) s)))))
 
-      
-  
+
 (defun correctly-predicted-index-p (index predicted-frame-element predicted-frame gold-frames include-word-sense)
   "Returns t if the index form the predicted-frame occurs in the same role of the same frame in the gold-standard annotation."
   (let ((predicted-frame-name (if include-word-sense
