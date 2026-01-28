@@ -12,8 +12,8 @@ sentences out of full corpus to serve as test sentences, keeping the
 remaining sentences for training."
   (setf full-corpus (shuffle full-corpus))
   (values (subseq full-corpus size-of-test-set) ;;training set
-          (subseq full-corpus 0 size-of-test-set)) ;;test set
-  )
+          (subseq full-corpus 0 size-of-test-set))) ;;test set
+  
 
 
 (defun learn-and-evaluate-sentence (conll-sentence training-configuration)
@@ -211,7 +211,6 @@ remaining sentences for training."
                         (loop for gold-frame in annotation
                               always (spacy-benepar-compatible-annotation sentence (frame-name gold-frame)
                                                                           :selected-role-types (if core-roles-only
-
                                                                                                  'core-only 'all)))))
             do ;; count all gold standard predictions / frame
               (loop for frame in annotation
@@ -233,29 +232,31 @@ remaining sentences for training."
                           (setf (gethash frame-name number-of-gold-standard-predictions-per-frame)
                                 updated-count)))
               ;; count all grammar predictions / frame
-              (loop for predicted-frame in solution
-                    for frame-name-as-string = (if include-word-sense
-                                                 (symbol-name (frame-name predicted-frame))
-                                                 (truncate-frame-name (symbol-name (frame-name predicted-frame))))
-                    when (and frame-name-as-string
-                              (null (find (truncate-frame-name (symbol-name (frame-name predicted-frame))) excluded-frames :test #'equalp))
-                              (or (null selected-rolesets)
-                                  (find frame-name-as-string selected-rolesets :test #'equalp))
-                              (find (truncate-frame-name frame-name-as-string) annotation
-                                    :key #'(lambda (frame)
-                                             (truncate-frame-name (frame-name frame)))
-                                    :test #'equalp))
-                      do (let ((frame-name (intern (upcase frame-name-as-string))))
-                           (setf (gethash frame-name number-of-grammar-predictions-per-frame)
-                                 (+ (or (gethash frame-name number-of-grammar-predictions-per-frame) 0)
-                                    (loop for role in (frame-elements predicted-frame)
-                                          if core-roles-only
-                                            sum (if (core-role-p role)
-                                                  (length (indices role)) 0)
-                                          else sum (length (indices role)))
-                                    (length (indices (frame-evoking-element predicted-frame))))))) ;;FEE
+              (when (listp solution)
+                (loop for predicted-frame in solution
+                      for frame-name-as-string = (if include-word-sense
+                                                   (symbol-name (frame-name predicted-frame))
+                                                   (truncate-frame-name (symbol-name (frame-name predicted-frame))))
+                      when (and frame-name-as-string
+                                (null (find (truncate-frame-name (symbol-name (frame-name predicted-frame))) excluded-frames :test #'equalp))
+                                (or (null selected-rolesets)
+                                    (find frame-name-as-string selected-rolesets :test #'equalp))
+                                (find (truncate-frame-name frame-name-as-string) annotation
+                                      :key #'(lambda (frame)
+                                               (truncate-frame-name (frame-name frame)))
+                                      :test #'equalp))
+                        do (let ((frame-name (intern (upcase frame-name-as-string))))
+                             (setf (gethash frame-name number-of-grammar-predictions-per-frame)
+                                   (+ (or (gethash frame-name number-of-grammar-predictions-per-frame) 0)
+                                      (loop for role in (frame-elements predicted-frame)
+                                            if core-roles-only
+                                              sum (if (core-role-p role)
+                                                    (length (indices role)) 0)
+                                            else sum (length (indices role)))
+                                      (length (indices (frame-evoking-element predicted-frame)))))))) ;;FEE
               ;; count all correct predictions / frame
-              (loop for predicted-frame in solution 
+              (when (listp solution)
+                (loop for predicted-frame in solution 
                     for frame-name-as-string = (if include-word-sense
                                                  (symbol-name (frame-name predicted-frame))
                                                  (truncate-frame-name (symbol-name (frame-name predicted-frame))))
@@ -282,7 +283,7 @@ remaining sentences for training."
                                     (if (correctly-predicted-fee-index-p (indices (frame-evoking-element predicted-frame)) ;;FEE
                                                                          predicted-frame annotation include-word-sense)
                                       (length (indices (frame-evoking-element predicted-frame)))
-                                      0))))))
+                                      0)))))))
 
     (with-open-file (s "./evaluations-per-frame.csv"
                        :if-does-not-exist :create
