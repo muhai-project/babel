@@ -95,9 +95,8 @@
                           (attr-val cxn :roleset-category))
         for node-id = (gethash cxn-cat (graph-utils::nodes (fcg::graph (categorial-network grammar))))
         for neighbours-hash-table = (gethash node-id (graph-utils::matrix
-                                                      (gethash nil (graph-utils::matrix (fcg::graph (categorial-network *grammar*))))))
+                                                      (gethash nil (graph-utils::matrix (fcg::graph (categorial-network grammar))))))
         collect (hash-table-count neighbours-hash-table) into degrees
         finally (return (average degrees))))
         
 ;; (average-degree *grammar*)
-
