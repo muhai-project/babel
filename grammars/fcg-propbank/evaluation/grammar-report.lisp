@@ -47,7 +47,7 @@
     (format t "      Median frequency: ~a ~%" (third fe-cxn-sum-average-median-non-hapax-frequency))
     (format t "      Number of non-hapax cxns: ~a of ~a ~%" (fourth fe-cxn-sum-average-median-non-hapax-frequency) nr-of-fe-cxns)
 
-    (format t "   Argument structure cxns: ~%" )
+`    (format t "   Argument structure cxns: ~%" )
     (format t "      Absolute frequency: ~a ~%" (first argst-cxn-sum-average-median-non-hapax-frequency))
     (format t "      Mean frequency: ~a ~%" (second argst-cxn-sum-average-median-non-hapax-frequency))
     (format t "      Median frequency: ~a ~%" (third argst-cxn-sum-average-median-non-hapax-frequency))
@@ -60,9 +60,7 @@
     (format t "      Number of non-hapax cxns: ~a of ~a ~%" (fourth roleset-cxn-sum-average-median-non-hapax-frequency) nr-of-roleset-cxns)
     (format t "~%---------------------------------------------------------------------------------~%~%")
     (format t "Construction network information:~%")
-    (format t "   Average degree (argst-roleset): ~a ~%" (average-degree grammar))
-    (format t "   Average degree (fe-roleset): ~a ~%" (average-degree grammar :edge-type 'lex-sense))
-    (format t "   Average degree (fe-argst): ~a ~%" (average-degree grammar :edge-type 'lex-gram))
+    (format t "   Average degree: ~a ~%" (average-degree grammar))
     
     (format t "~%---------------------------------------------------------------------------------~%")
     ))
@@ -87,14 +85,19 @@
         
 ;; (sum-average-median-non-hapax-frequency *propbank-grammar-ontonotes-ewt-core-roles* :type 'word-sense-cxn)
 
-(defun average-degree (grammar &key (edge-type 'gram-sense))
-  "Calculates average degree of grammar network."
-  (loop for value being the hash-values of (graph-utils::matrix (gethash edge-type
-                                                                         (graph-utils::matrix
-                                                                          (fcg::graph (categorial-network grammar)))))
-      collect (hash-table-count value) into degrees
-      finally (return (average degrees))))
-        
-;; (average-degree *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)
 
+       
+(defun average-degree (grammar)
+  "Computes average degree of nodes in grammar network"
+  (loop for cxn in (constructions-list grammar)
+        for cxn-cat = (or (attr-val cxn :fe-category)
+                          (attr-val cxn :argst-category)
+                          (attr-val cxn :roleset-category))
+        for node-id = (gethash cxn-cat (graph-utils::nodes (fcg::graph (categorial-network grammar))))
+        for neighbours-hash-table = (gethash node-id (graph-utils::matrix
+                                                      (gethash nil (graph-utils::matrix (fcg::graph (categorial-network *grammar*))))))
+        collect (hash-table-count neighbours-hash-table) into degrees
+        finally (return (average degrees))))
+        
+;; (average-degree *grammar*)
 
