@@ -46,12 +46,10 @@
   (setf  *training-set* training-set)
   (setf *test-set* test-set))
 
-;; Learn a new grammar for the core roles in the PropBank annotation,
-;; do not replace equivalent cxns but update frequency when the same cxn would be learnt
-(learn-propbank-grammar *training-set*
+;; Learn a new grammar for the core roles in the PropBank annotation
+(learn-propbank-grammar *full-corpus*
                         :cxn-inventory '*propbank-grammar-core-roles*
-                        :fcg-configuration '((:replace-when-equivalent . nil)
-                                             (:learning-modes :core-roles)))
+                        :fcg-configuration '((:learning-modes :core-roles)))
 
 ;; Optionally, store the grammar for later reuse
 (cl-store:store *propbank-grammar-core-roles*
@@ -144,6 +142,7 @@
   (setf *sorted-freqs-roleset-cxns* roleset-freqs))
 
 
+
 (with-open-file (f (babel-pathname :directory '(".tmp")
                                    :name "fe-cxn-freqs"
                                    :type "lisp")
@@ -162,6 +161,7 @@
                    :if-does-not-exist :create :direction :output :if-exists :supersede)
   (write-line (format nil "((~a))" *sorted-freqs-roleset-cxns*) f))
 
+
 (ql:quickload :plot-raw-data)
 
 (plot-raw-data::raw-files->evo-plot  
@@ -170,12 +170,20 @@
                    (".tmp" "roleset-cxn-freqs"))
  :average-windows 1
  :logscale 'xy
- :y1-label "Construction Frequency"
- :x-label "Rank"
- :colors '("medium-blue" "magenta" "web-green")
+ :y1-label "Construction Frequency (log)"
+ :x-label "Rank (log)"
+ :colors '("medium-blue"  "dark-pink" "dark-turquoise" )
+ :captions '("Frame-evoking cxns" "Argument structure cxns" "Roleset cxns")
  :fsize 11
  :key-box t
  :key-location t
  :grid-line-width 0.1
  :line-width 2.5
+ :step 1
+ ;;:end 50
   )
+
+(length *cxns-sorted-by-freq*)
+
+;;*great-gnuplot-colors*
+;;("#328888" "dark-goldenrod" "dark-red" "navy" "dark-green" "gray30" "light-red" "green" "dark-orange" "royalblue" "sea-green" "dark-pink" "purple" "orange-red" "gray50" "dark-khaki" "dark-turquoise" "salmon" "dark-magenta" "dark-yellow" "violet" "light-green")
