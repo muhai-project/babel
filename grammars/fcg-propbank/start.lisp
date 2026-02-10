@@ -57,7 +57,11 @@
                                 :name (mkstr (downcase (name *propbank-grammar-core-roles*)))
                                 :type "fcg"))
 
-
+;; Or restore it:
+(defparameter *propbank-grammar-core-roles*
+  (cl-store:restore (babel-pathname :directory '(".tmp")
+                                    :name "propbank-learned"
+                                    :type "fcg")))
 
 ;; Using a learnt grammar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -65,9 +69,6 @@
 ;; (activate-monitor trace-fcg)
 ;; (defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
 
-;;(get-configuration *propbank-grammar-core-roles* :heuristics)
-;;(set-configuration *propbank-grammar-core-roles* :heuristics '(:edge-weight :nr-of-roles-integrated))
-(set-configuration (visualization-configuration *propbank-grammar-core-roles*) :show-constructional-dependencies nil)
 (comprehend-and-extract-frames "First, Moses told the people every command in the law."
                                :cxn-inventory *propbank-grammar-core-roles*)
 
@@ -97,10 +98,15 @@
                               *propbank-grammar-core-roles*))
 
 
-(pprint (find-schemata-for-roleset 'TELL.01 *propbank-grammar-core-roles*))
+(pprint (find-schemata-for-roleset 'EXPLAIN.01 *propbank-grammar-core-roles*))
 
-(pprint (graph-utils::closest-nodes 'TELL.01 (fcg::graph (categorial-network *propbank-grammar-core-roles*))
+(pprint (graph-utils::closest-nodes 'EXPLAIN.01 (fcg::graph (categorial-network *propbank-grammar-core-roles*))
                                     :edge-type 'gram-sense))
+
+(pprint (graph-utils::closest-nodes 'TELL\(V\)-1 (fcg::graph (categorial-network *propbank-grammar-core-roles*))
+                                    :edge-type 'lex-gram))
+
+(find-cxn 'TELL.01-cxn
 
  ;; Evaluating a learnt grammar
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
