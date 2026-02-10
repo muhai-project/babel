@@ -120,7 +120,6 @@
 ;; Sentence ;;
 ;;;;;;;;;;;;;;
 
-
 (defclass conll-sentence ()
   ((source-file
     :type string
@@ -378,4 +377,15 @@
                  :initial-transient-structure (create-initial-transient-structure-based-on-benepar-analysis
                                                (syntactic-analysis spacy-benepar-sentence))))
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Convert conll-sentence into fcg-propbank-sentence    ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod connl->fcg-propbank ((sentence conll-sentence) &key (language "en"))
+  "Turn connl-sentence into fcg-propbank sentence for learning"
+  (let ((spacy-benepar-sentence (conll-sentence-to-spacy-benepar-sentence sentence language)))
+    (spacy-benepar-sentence-to-fcg-propbank-sentence spacy-benepar-sentence)))
 

@@ -40,11 +40,11 @@ the node through the links in the categorial network."
                                                            (gethash nil (constructions-hash-table (construction-inventory node)))
                                                            (loop for hash in (hash node (get-configuration node :hash-mode))
                                                                  append (gethash hash (constructions-hash-table (construction-inventory node))))))
-                            collect (cond ((attr-val cxn :gram-category)
-                                           (when (member (attr-val cxn :gram-category) lex-cat-neighbours)
+                            collect (cond ((attr-val cxn :argst-category)
+                                           (when (member (attr-val cxn :argst-category) lex-cat-neighbours)
                                              cxn))
-                                          ((attr-val cxn :sense-category)
-                                           (when (member (attr-val cxn :sense-category) gram-cat-neighbours)
+                                          ((attr-val cxn :roleset-category)
+                                           (when (member (attr-val cxn :roleset-category) gram-cat-neighbours)
                                              cxn))
                                           (t
                                            cxn))))))
@@ -58,13 +58,13 @@ the node through the links in the categorial network."
 
 (defun lex-categories (node)
   (loop for unit in (fcg-get-transient-unit-structure node)
-        for lex-category = (unit-feature-value unit 'lex-category)
+        for lex-category = (unit-feature-value unit 'fe-category)
         when lex-category
         collect it))
 
 (defun gram-categories (node)
   (loop for unit in (fcg-get-transient-unit-structure node)
-        for gram-category = (unit-feature-value unit 'gram-category)
+        for gram-category = (unit-feature-value unit 'argst-category)
         when gram-category
         collect it))
 

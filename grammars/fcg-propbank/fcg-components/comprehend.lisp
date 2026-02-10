@@ -33,7 +33,29 @@
                         (comprehend-with-rolesets initial-cfs cxn-inventory selected-rolesets (sentence-string utterance) silent))
           (trivial-timeout:timeout-error (error)
             (values 'time-out 'time-out 'time-out)))
-      (values meaning cip-node cip))))
+      (let ((frames-for-wi (loop for frame in (propbank-frames utterance)
+                                 for all-frame-roles = (frame-roles frame)
+                                 for fe-role = (find "V" all-frame-roles :key #'role-type :test #'string=)
+                                 for fee = (make-instance 'frame-evoking-element
+                                                          :fel-string (role-string fe-role))
+                                 for other-roles = (remove-if #'(lambda (role) (string= (role-type role) "V")) all-frame-roles)
+                                 for frame-elements = (loop for role in other-roles
+                                                            collect (make-instance 'frame-element
+                                                                                   :fe-string (role-string role)
+                                                                                   :fe-name (read-from-string (role-type role))
+                                                                                   :fe-role (read-from-string (role-type role))))
+                                 collect (make-instance 'frame
+                                                        :frame-name (frame-name frame)
+                                                        :frame-evoking-element fee
+                                                        :frame-elements frame-elements))))
+        (wi:add-element `((h3 :style "margin-bottom:3px;") "Gold standard:"))
+        (add-element (make-html (make-instance 'frame-set :frames (sort frames-for-wi #'string-lessp :key #'frame-name))
+                                :expand-initially t))
+        (values meaning cip-node cip)))))
+
+
+
+
 
 (defmethod propbank-comprehend ((utterance string) 
                                 &key (syntactic-analysis nil) 

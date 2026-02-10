@@ -17,7 +17,7 @@
                                :frame-elements (find-frame-elements unit unit-list))
         into frames
         finally
-        (return (make-instance 'frame-set :frames frames))))
+          (return (make-instance 'frame-set :frames (sort frames #'string-lessp :key #'frame-name)))))
 
 (defun find-frame-name (unit)
   "Find frame name in unit."

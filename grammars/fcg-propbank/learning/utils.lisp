@@ -49,9 +49,9 @@
         collect (cons (intern (role-type role))
                       (if (find 'v (feature-value (find 'syn-class (cddr cxn-unit) :key #'feature-name)))
                         (feature-value (find 'syn-class (cddr cxn-unit) :key #'feature-name))
-                        (if (find 'dependency-label (cddr cxn-unit) :key #'feature-name)
-                          (list (feature-value (find 'dependency-label (cddr cxn-unit) :key #'feature-name)))
-                          (feature-value (find 'syn-class (cddr cxn-unit) :key #'feature-name)))))))
+                        ;;(if (find 'dependency-label (cddr cxn-unit) :key #'feature-name)
+                        ;;  (list (feature-value (find 'dependency-label (cddr cxn-unit) :key #'feature-name)))
+                          (feature-value (find 'syn-class (cddr cxn-unit) :key #'feature-name))))))
 
 
 (defmethod make-cxn-schema (units-with-role cxn-units-with-role 
@@ -142,7 +142,7 @@
 
 
 
-(defun make-gram-category (units-with-role &optional lemma)
+(defun make-argst-category (units-with-role &optional lemma)
   "Creates a unique grammatical category based on units-with-role."
   (if lemma
     (intern (symbol-name (make-const
@@ -157,19 +157,19 @@
                                         else collect
                                             (format nil "~a~a"
                                                     (role-type r)
-                                                    (if (and (not (string= "V" (role-type r)))
-                                                             (find 'dependency-label (unit-body u) :key #'feature-name))
-                                                      (list (feature-value (find 'dependency-label (unit-body u) :key #'feature-name)))
-                                                      (feature-value (find 'syn-class (unit-body u) :key #'feature-name)))))))))
+                                                   ;; (if (and (not (string= "V" (role-type r)))
+                                                   ;;          (find 'dependency-label (unit-body u) :key #'feature-name))
+                                                   ;;   (list (feature-value (find 'dependency-label (unit-body u) :key #'feature-name)))
+                                                      (feature-value (find 'syn-class (unit-body u) :key #'feature-name))))))))
     (intern (symbol-name (make-const
                           (format nil "~{~a~^+~}"
                                   (loop for (r . u) in units-with-role
                                         collect (format nil "~a~a"
                                                         (role-type r)
-                                                        (if (and (not (string= "V" (role-type r)))
-                                                                 (find 'dependency-label (unit-body u) :key #'feature-name))
-                                                          (list (feature-value (find 'dependency-label (unit-body u) :key #'feature-name)))
-                                                          (feature-value (find 'syn-class (unit-body u) :key #'feature-name)))))))))))
+                                                       ;; (if (and (not (string= "V" (role-type r)))
+                                                       ;;          (find 'dependency-label (unit-body u) :key #'feature-name))
+                                                       ;;   (list (feature-value (find 'dependency-label (unit-body u) :key #'feature-name)))
+                                                          (feature-value (find 'syn-class (unit-body u) :key #'feature-name))))))))))
 
 
 (defun make-subclause-word-unit (unit-with-role unit-structure)
@@ -215,7 +215,7 @@
 
 ;(truncate-frame-name 'believe.01)
 
-(defun make-propbank-contributing-unit (units-with-role gold-frame gram-category footprint &key (include-gram-category? t))
+(defun make-propbank-contributing-unit (units-with-role gold-frame argst-category footprint &key (include-argst-category? t))
   "Make a contributing unit based on a gold-frame and units-with-role."
   (let* ((v-unit (cdr (assoc "V" units-with-role :key #'role-type :test #'equalp)))
          (v-unit-name (variablify (unit-name v-unit)))
@@ -231,7 +231,7 @@
     `(,v-unit-name
       (frame-evoking +)
       (footprints (,footprint))
-      ,@(when include-gram-category? `((gram-category ,gram-category)))
+      ,@(when include-argst-category? `((argst-category ,argst-category)))
       (frame ?roleset)
       (meaning ,meaning))))
 
@@ -243,11 +243,11 @@ initial transient structure that plays a role in the frame."
          (unit-name (variablify (unit-name unit)))
          (parent (when (cadr (find 'parent (unit-body unit) :key #'feature-name))
                    (variablify (cadr (find 'parent (unit-body unit) :key #'feature-name)))))
-         (syn-class (find 'syn-class (unit-body unit) :key #'feature-name))
-         (dependency-label ;(when (find 'rb (feature-value syn-class))
-          (find 'dependency-label (unit-body unit) :key #'feature-name)))
+         (syn-class (find 'syn-class (unit-body unit) :key #'feature-name)))
+         ;(dependency-label
+         ; (find 'dependency-label (unit-body unit) :key #'feature-name)))
     
-    ;;a FEE unit also has the features lemma and footprints
+    ;;a fee unit also has footprints
     (if (equalp "V" (role-type (car unit-with-role)))
       `(,unit-name
         --
@@ -257,16 +257,16 @@ initial transient structure that plays a role in the frame."
         ,@(when frame-evoking
             '((frame-evoking +)))
         ,@(when category
-            `((lex-category ,category))))
+            `((fe-category ,category))))
       `(,unit-name
         --
         (parent ,parent)
-        ,@(if dependency-label
-            `(,dependency-label)
-            `(,syn-class))
-        ,@(when lemma
+       #| ,@(if dependency-label
+            `(,dependency-label)|#
+        ,syn-class
+        ,@(when lemma ;;for argm cxns
             `((lemma ,lemma)))
-        ,@(when string
+        ,@(when string ;;for argm cxns
             `((string ,string)))))))
 
 
@@ -339,8 +339,8 @@ fillers (arg0, arg1) and the frame-evoking element unit."
   (remove-duplicates
    (loop with fee-unit = (cdr (find-if #'(lambda(unit-with-role) (string= (role-type (car unit-with-role)) "V"))
                                        units-with-role))
-         for unit-with-role in (remove fee-unit units-with-role :test #'equal) ;;discard the frame-evoking element (FEE) unit
-         for path = (find-path-in-syntactic-tree (cdr unit-with-role) fee-unit unit-structure) ;;find path between a unit in the transient structure and the FEE unit
+         for unit-with-role in (remove fee-unit units-with-role :test #'equal) ;; discard the frame-evoking element (FEE) unit
+         for path = (find-path-in-syntactic-tree (cdr unit-with-role) fee-unit unit-structure) ;; find path between a unit in the transient structure and the FEE unit
          append (progn (assert path)
                   (loop for unit-name in path
                         for unit = (find unit-name unit-structure :key #'unit-name)
@@ -354,8 +354,9 @@ fillers (arg0, arg1) and the frame-evoking element unit."
                                   ,@(when (has-siblings? unit-with-role units-with-role)
                                       `((word-order ,(make-form-constraints-for-children-with-role-and-same-type unit cxn-units-with-role))))
                                   ,(find 'syn-class (unit-body unit) :key #'feature-name)
-                                  ,@(when (find 'passive (unit-body unit) :key #'feature-name)
-                                      `(,(find 'passive (unit-body unit) :key #'feature-name)))))))
+                                ;;  ,@(when (find 'passive (unit-body unit) :key #'feature-name)
+                                ;;      `(,(find 'passive (unit-body unit) :key #'feature-name)))
+                                  ))))
    :key #'unit-name))
 
 (defun has-siblings? (unit other-units)

@@ -12,17 +12,17 @@
                                  (:hide-attributes . t)
                                  (:hide-features . nil))
   :fcg-configurations ((:node-tests :check-double-role-assignment)
-                      (:parse-goal-tests :no-valid-children)
-                      (:max-nr-of-nodes . 100)
-                      (:de-render-mode . :de-render-constituents-dependents)
-                      (:construction-inventory-processor-mode . :heuristic-search)
-                      (:search-algorithm . :best-first)
-                      (:heuristic-value-mode . :sum-heuristics-and-parent)
-                      (:heuristics :minimize-path-length)   ;; Additional heuristics: :prefer-local-bindings :nr-of-units-matched
-                      (:cxn-supplier-mode . :hashed-categorial-network)
-                      (:sort-cxns-before-application . nil)
-                      (:node-expansion-mode . :full-expansion)
-                      (:hash-mode . :hash-lemma))
+                       (:parse-goal-tests :no-valid-children)
+                       (:max-nr-of-nodes . 200)
+                       (:de-render-mode . :de-render-constituents-dependents)
+                       (:construction-inventory-processor-mode . :heuristic-search)
+                       (:search-algorithm . :best-first)
+                       (:heuristic-value-mode . :sum-heuristics-and-parent)
+                       (:heuristics :edge-weight :nr-of-roles-integrated)
+                       (:cxn-supplier-mode . :hashed-categorial-network)
+                       (:sort-cxns-before-application . nil)
+                       (:node-expansion-mode . :full-expansion)
+                       (:hash-mode . :hash-lemma))
   :hierarchy-features (constituents dependents)
   :feature-types ((constituents sequence)
                   (dependents sequence)
@@ -102,11 +102,11 @@ have been annotated for the given gold-frame. "
                                               (search "ARGM" (role-type (car unit-with-role))))
                                           (units-with-role ts-unit-structure gold-frame))))
   
-      (let* ((lex-category (add-lexical-cxn gold-frame (v-unit core-units-with-role) cxn-inventory fcg-propbank-sentence))
-             (gram-category (when lex-category
-                              (add-grammatical-cxn gold-frame core-units-with-role cxn-inventory fcg-propbank-sentence lex-category))))
-        (when gram-category
-          (add-word-sense-cxn gold-frame (v-unit core-units-with-role) cxn-inventory fcg-propbank-sentence lex-category gram-category)))))
+      (let* ((fe-category (add-lexical-cxn gold-frame (v-unit core-units-with-role) cxn-inventory fcg-propbank-sentence))
+             (argst-category (when fe-category
+                              (add-grammatical-cxn gold-frame core-units-with-role cxn-inventory fcg-propbank-sentence fe-category))))
+        (when argst-category
+          (add-word-sense-cxn gold-frame (v-unit core-units-with-role) cxn-inventory fcg-propbank-sentence fe-category argst-category)))))
 
 
 (defun find-lexical-cxn (v-unit cxn-inventory)
@@ -122,7 +122,7 @@ increments frequency of existing cxn. Also adds a new lexical category
 to the categorial network. Returns the lexical category."
   (let* ((lemma (feature-value (find 'lemma (unit-body v-unit) :key #'feature-name)))
          (syn-class (feature-value (find 'syn-class (unit-body v-unit) :key #'feature-name)))
-         (lex-category (intern (symbol-name (make-id (format nil "~a~a" (truncate-frame-name (frame-name gold-frame)) syn-class)))
+         (fe-category (intern (symbol-name (make-id (format nil "~a~a" (truncate-frame-name (frame-name gold-frame)) syn-class)))
                                :fcg-propbank))
          (cxn-name (intern (upcase (format nil "~a~a-cxn" lemma syn-class)) :fcg-propbank))
          (equivalent-cxn (find-cxn cxn-name cxn-inventory :hash-key lemma :key #'name)))
@@ -130,7 +130,7 @@ to the categorial network. Returns the lexical category."
       ;; If cxn already exists: increment frequency
       (progn
         (incf (attr-val equivalent-cxn :score))
-        (attr-val equivalent-cxn :lex-category))
+        (attr-val equivalent-cxn :fe-category))
       ;; Else make new cxn
       (when lemma
         (if (equalp syn-class '(vp))
@@ -139,7 +139,7 @@ to the categorial network. Returns the lexical category."
              `(def-fcg-cxn ,cxn-name
                            ((?phrasal-unit
                              (footprints (lex))
-                             (lex-category ,lex-category))
+                             (fe-category ,fe-category))
                             (?lex-unit
                              (footprints (lex)))
                             <-
@@ -151,12 +151,10 @@ to the categorial network. Returns the lexical category."
                             (?lex-unit
                              --
                              (footprints (NOT lex))
-                             
                              (lemma ,lex-lemma)
                              (parent ?phrasal-unit)))
-                          
                            :attributes (:lemma ,lemma
-                                        :lex-category ,lex-category
+                                        :fe-category ,fe-category
                                         :label lexical-cxn
                                         :score 1)
                            :description ,(sentence-string propbank-sentence)
@@ -166,43 +164,39 @@ to the categorial network. Returns the lexical category."
              `(def-fcg-cxn ,cxn-name
                            ((?lex-unit
                              (footprints (lex))
-                             (lex-category ,lex-category))
+                             (fe-category ,fe-category))
                             <-
                             (?lex-unit
                              --
                              (footprints (NOT lex))
-                             
                              (lemma ,lemma)
                              (syn-class ,syn-class)))
                            :attributes (:lemma ,lemma
-                                        :lex-category ,lex-category
+                                        :fe-category ,fe-category
                                         :label lexical-cxn
                                         :score 1)
                            :description ,(sentence-string propbank-sentence)
                            :disable-automatic-footprints t
                            :cxn-inventory ,cxn-inventory)))
-        (add-category lex-category cxn-inventory :recompute-transitive-closure nil)
-          lex-category))))
+        (add-category fe-category cxn-inventory :recompute-transitive-closure nil)
+          fe-category))))
 
 
 
-(defun add-grammatical-cxn (gold-frame core-units-with-role cxn-inventory propbank-sentence lex-category)
+(defun add-grammatical-cxn (gold-frame core-units-with-role cxn-inventory propbank-sentence fe-category)
   "Learns a grammatical construction capturing all core roles and adds
 a grammatical category to the categorial network. Returns the
 grammatical category."
   
   (let* ((ts-unit-structure (ts-unit-structure propbank-sentence cxn-inventory))
-         (gram-category (make-gram-category core-units-with-role))
+         (argst-category (make-argst-category core-units-with-role))
          (cxn-units-with-role (loop for unit in core-units-with-role
-                                    collect (make-propbank-conditional-unit-with-role unit gram-category 'fee)))
+                                    collect (make-propbank-conditional-unit-with-role unit argst-category 'fee)))
          (cxn-units-without-role (make-propbank-conditional-units-without-role core-units-with-role
                                                                                cxn-units-with-role ts-unit-structure))
-         (passive (loop for unit in cxn-units-without-role
-                        when (eql '+ (unit-feature-value (cdr unit) 'passive))
-                        return t))
-         (contributing-unit (make-propbank-contributing-unit core-units-with-role gold-frame gram-category 'fee))
+         (contributing-unit (make-propbank-contributing-unit core-units-with-role gold-frame argst-category 'fee))
          (schema (make-cxn-schema core-units-with-role cxn-units-with-role :core-roles))
-         (cxn-name (intern (upcase (format nil "~a+~a-cxn" gram-category (length cxn-units-without-role))) :fcg-propbank))
+         (cxn-name (intern (upcase (format nil "~a+~a-cxn" argst-category (length cxn-units-without-role))) :fcg-propbank))
          (equivalent-cxn (find-equivalent-cxn schema
                                               (syn-classes (append cxn-units-with-role
                                                                    cxn-units-without-role))
@@ -215,28 +209,28 @@ grammatical category."
       (progn
         ;;1) Increase its frequency
         (incf (attr-val equivalent-cxn :score))
-        ;;2) Check if there was already a link in the categorial network between the lex-category and the gram-category:
-        (if (link-exists-p lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory)
+        ;;2) Check if there was already a link in the categorial network between the fe-category and the argst-category:
+        (if (link-exists-p fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory)
           ;;a) If yes, increase edge weight
           (progn
-            (incf-link-weight lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :delta 1.0 :link-type nil)
-            (incf-link-weight lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :delta 1.0 :link-type 'lex-gram))
+            (incf-link-weight fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :delta 1.0 :link-type nil)
+            (incf-link-weight fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :delta 1.0 :link-type 'lex-gram))
           ;;b) Otherwise, add new connection (weight 1.0)
           (progn
-            (add-link lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :weight 1.0 :link-type nil
+            (add-link fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :weight 1.0 :link-type nil
                       :recompute-transitive-closure nil)
-            (add-link lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :weight 1.0 :link-type 'lex-gram
+            (add-link fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :weight 1.0 :link-type 'lex-gram
                       :recompute-transitive-closure nil)))
-        ;;3) Return gram-category
-        (attr-val equivalent-cxn :gram-category))
+        ;;3) Return argst-category
+        (attr-val equivalent-cxn :argst-category))
 
       ;; Else: Create a new grammatical category for the observed pattern + add category and link to the categorial network
       ;;--------------------------------------------------------------------------------------------------------------------
       (when (and cxn-units-with-role (v-lemma core-units-with-role))
         
-        (add-category gram-category cxn-inventory :recompute-transitive-closure nil)
-        (add-link lex-category gram-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-        (add-link lex-category gram-category cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)
+        (add-category argst-category cxn-inventory :recompute-transitive-closure nil)
+        (add-link fe-category argst-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+        (add-link fe-category argst-category cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)
         
         (eval `(def-fcg-cxn ,cxn-name
                             (,contributing-unit
@@ -249,13 +243,13 @@ grammatical category."
                                          :lemma nil
                                          :label argument-structure-cxn
                                          :score 1
-                                         :gram-category ,gram-category)
+                                         :argst-category ,argst-category)
                             :description ,(sentence-string propbank-sentence)
                             :cxn-inventory ,cxn-inventory))
-        gram-category))))
+        argst-category))))
 
 
-(defun add-word-sense-cxn (gold-frame v-unit cxn-inventory propbank-sentence lex-category gram-category)
+(defun add-word-sense-cxn (gold-frame v-unit cxn-inventory propbank-sentence fe-category argst-category)
   "Creates a new word sense construction if necessary, otherwise
 increments frequency of existing cxn. Adds a new sense category to the
 categorial network and returns it."
@@ -266,7 +260,7 @@ categorial network and returns it."
          (equivalent-cxn (find-cxn cxn-name cxn-inventory :hash-key (if (stringp lemma)
                                                                       (intern (upcase lemma) :fcg-propbank)
                                                                       lemma) :key #'name))
-         (sense-category (intern (symbol-name (make-id (frame-name gold-frame))) :fcg-propbank)))
+         (roleset-category (intern (upcase (frame-name gold-frame)) :fcg-propbank)))
     
     (if equivalent-cxn
       
@@ -275,31 +269,31 @@ categorial network and returns it."
       (progn
         (incf (attr-val equivalent-cxn :score))
         
-        ;; edge between gram-category and sense-category
-        (if (link-exists-p gram-category (attr-val equivalent-cxn :sense-category) cxn-inventory)
+        ;; edge between argst-category and roleset-category
+        (if (link-exists-p argst-category (attr-val equivalent-cxn :roleset-category) cxn-inventory)
           ;;connection between gram and sense category exists: increase edge weight
           (progn
-            (incf-link-weight gram-category (attr-val equivalent-cxn :sense-category) cxn-inventory :delta 1.0 :link-type nil)
-            (incf-link-weight gram-category (attr-val equivalent-cxn :sense-category) cxn-inventory :delta 1.0 :link-type 'gram-sense))
+            (incf-link-weight argst-category (attr-val equivalent-cxn :roleset-category) cxn-inventory :delta 1.0 :link-type nil)
+            (incf-link-weight argst-category (attr-val equivalent-cxn :roleset-category) cxn-inventory :delta 1.0 :link-type 'gram-sense))
           ;;add new link
           (progn
-            (add-link gram-category
-                      (attr-val equivalent-cxn :sense-category) cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-            (add-link gram-category
-                      (attr-val equivalent-cxn :sense-category) cxn-inventory :weight 1.0 :link-type 'gram-sense :recompute-transitive-closure nil)))
+            (add-link argst-category
+                      (attr-val equivalent-cxn :roleset-category) cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+            (add-link argst-category
+                      (attr-val equivalent-cxn :roleset-category) cxn-inventory :weight 1.0 :link-type 'gram-sense :recompute-transitive-closure nil)))
         
-        ;; edge between lex-category and sense-category
-        (if (link-exists-p lex-category (attr-val equivalent-cxn :sense-category) cxn-inventory)
+        ;; edge between fe-category and roleset-category
+        (if (link-exists-p fe-category (attr-val equivalent-cxn :roleset-category) cxn-inventory)
           (progn
-            (incf-link-weight lex-category (attr-val equivalent-cxn :sense-category) cxn-inventory :delta 1.0 :link-type nil)
-            (incf-link-weight lex-category (attr-val equivalent-cxn :sense-category) cxn-inventory :delta 1.0 :link-type 'lex-sense))
+            (incf-link-weight fe-category (attr-val equivalent-cxn :roleset-category) cxn-inventory :delta 1.0 :link-type nil)
+            (incf-link-weight fe-category (attr-val equivalent-cxn :roleset-category) cxn-inventory :delta 1.0 :link-type 'lex-sense))
           (progn
-            (add-link lex-category
-                      (attr-val equivalent-cxn :sense-category) cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-            (add-link lex-category
-                      (attr-val equivalent-cxn :sense-category) cxn-inventory :weight 1.0 :link-type 'lex-sense :recompute-transitive-closure nil)))
+            (add-link fe-category
+                      (attr-val equivalent-cxn :roleset-category) cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+            (add-link fe-category
+                      (attr-val equivalent-cxn :roleset-category) cxn-inventory :weight 1.0 :link-type 'lex-sense :recompute-transitive-closure nil)))
 
-        (attr-val equivalent-cxn :sense-category))
+        (attr-val equivalent-cxn :roleset-category))
       
       ;; Else make new cxn
       ;;-------------------
@@ -314,27 +308,27 @@ categorial network and returns it."
                          ,@(if (stringp lemma)
                              `((string ,lemma))
                              `((lemma ,lemma)))
-                         (gram-category ,sense-category)
-                         (lex-category ,sense-category)
+                         (argst-category ,roleset-category)
+                         (fe-category ,roleset-category)
                          (frame ,(intern (upcase (frame-name gold-frame)) :fcg-propbank))
                          (footprints (NOT ws))))
                        :disable-automatic-footprints t
                        :attributes (:lemma ,(if (stringp lemma)
                                               (intern (upcase lemma) :fcg-propbank)
                                               lemma)
-                                    :sense-category ,sense-category
+                                    :roleset-category ,roleset-category
                                     :label word-sense-cxn
                                     :score 1)
                        :description ,(sentence-string propbank-sentence)
                        :cxn-inventory ,cxn-inventory))
         
-        (add-category sense-category cxn-inventory :recompute-transitive-closure nil)
-        (add-link gram-category sense-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-        (add-link gram-category sense-category cxn-inventory :weight 1.0 :link-type 'gram-sense :recompute-transitive-closure nil)
-        (add-link lex-category sense-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-        (add-link lex-category sense-category cxn-inventory :weight 1.0 :link-type 'lex-sense :recompute-transitive-closure nil)
+        (add-category roleset-category cxn-inventory :recompute-transitive-closure nil)
+        (add-link argst-category roleset-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+        (add-link argst-category roleset-category cxn-inventory :weight 1.0 :link-type 'gram-sense :recompute-transitive-closure nil)
+        (add-link fe-category roleset-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+        (add-link fe-category roleset-category cxn-inventory :weight 1.0 :link-type 'lex-sense :recompute-transitive-closure nil)
         
-        sense-category))))
+        roleset-category))))
 
 
 
@@ -387,7 +381,7 @@ categorial network and returns it."
                 if (equal (role-type (car unit-w-role)) "V")
                 collect (make-propbank-conditional-unit-with-role unit-w-role nil footprint :frame-evoking t)
                 else collect (make-propbank-conditional-unit-with-role unit-w-role nil footprint :lemma argm-lemma)))
-         (contributing-unit (make-propbank-contributing-unit units-with-role gold-frame nil footprint :include-gram-category? nil))
+         (contributing-unit (make-propbank-contributing-unit units-with-role gold-frame nil footprint :include-argst-category? nil))
          (cxn-units-without-role (make-propbank-conditional-units-without-role units-with-role cxn-units-with-role ts-unit-structure))
          (cxn-name (make-cxn-name units-with-role cxn-units-with-role cxn-units-without-role :argm-leaf :lemma argm-lemma))
          (schema (make-cxn-schema units-with-role cxn-units-with-role :argm-leaf :lemma argm-lemma))
@@ -446,9 +440,9 @@ categorial network and returns it."
                                   units-with-role))
          (v-unit (v-unit units-with-role))
          (lex-cxn (find-lexical-cxn v-unit cxn-inventory))
-         (lex-category (when lex-cxn (attr-val lex-cxn :lex-category)))
-         (gram-categories
-          (when lex-category
+         (fe-category (when lex-cxn (attr-val lex-cxn :fe-category)))
+         (argst-categories
+          (when fe-category
             (loop with v-unit-with-role = (v-unit-with-role units-with-role)
                   for argm-pp in argm-pps
                   for pp-unit-name = (unit-name (cdr argm-pp))
@@ -461,13 +455,13 @@ categorial network and returns it."
                                 collect (let ((units-with-role (if v-unit-found? ;;v-unit precedes argm-pp-unit
                                                                  (list v-unit-with-role argm-pp)
                                                                  (list argm-pp v-unit-with-role))))
-                                          (add-pp-cxn gold-frame units-with-role cxn-inventory propbank-sentence lex-category ts-unit-structure)))))))
+                                          (add-pp-cxn gold-frame units-with-role cxn-inventory propbank-sentence fe-category ts-unit-structure)))))))
     
-    (loop for gram-category in gram-categories
+    (loop for argst-category in argst-categories
           for word-sense-cxn = (find-word-sense-cxn gold-frame v-unit cxn-inventory)
           if word-sense-cxn
-          do (update-categorial-network lex-category gram-category (attr-val word-sense-cxn :sense-category) cxn-inventory)
-          else do (add-word-sense-cxn gold-frame v-unit cxn-inventory propbank-sentence lex-category gram-category))))
+          do (update-categorial-network fe-category argst-category (attr-val word-sense-cxn :roleset-category) cxn-inventory)
+          else do (add-word-sense-cxn gold-frame v-unit cxn-inventory propbank-sentence fe-category argst-category))))
 
 
 
@@ -480,32 +474,32 @@ categorial network and returns it."
     (find-cxn cxn-name cxn-inventory :hash-key lemma :key #'name)))
 
 
-(defun update-categorial-network (lex-category gram-category sense-category cxn-inventory)
+(defun update-categorial-network (fe-category argst-category roleset-category cxn-inventory)
 
-  (if (cxn-inventory gram-category sense-category cxn-inventory)
+  (if (cxn-inventory argst-category roleset-category cxn-inventory)
     ;;connection between gram and sense category exists: increase edge weight
     (progn
-      (incf-link-weight gram-category sense-category cxn-inventory :delta 1.0 :link-type nil)
-      (incf-link-weight gram-category sense-category cxn-inventory :delta 1.0 :link-type 'gram-sense))
+      (incf-link-weight argst-category roleset-category cxn-inventory :delta 1.0 :link-type nil)
+      (incf-link-weight argst-category roleset-category cxn-inventory :delta 1.0 :link-type 'gram-sense))
     ;;add new link
     (progn
-      (add-link gram-category sense-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-      (add-link gram-category sense-category cxn-inventory :weight 1.0 :link-type 'gram-sense :recompute-transitive-closure nil)))
+      (add-link argst-category roleset-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+      (add-link argst-category roleset-category cxn-inventory :weight 1.0 :link-type 'gram-sense :recompute-transitive-closure nil)))
 
-  (if (link-exists-p lex-category sense-category cxn-inventory)
+  (if (link-exists-p fe-category roleset-category cxn-inventory)
     ;;connection between gram and sense category exists: increase edge weight
     (progn
-      (incf-link-weight lex-category sense-category cxn-inventory :delta 1.0 :link-type nil )
-      (incf-link-weight lex-category sense-category cxn-inventory :delta 1.0 :link-type 'lex-sense))
+      (incf-link-weight fe-category roleset-category cxn-inventory :delta 1.0 :link-type nil )
+      (incf-link-weight fe-category roleset-category cxn-inventory :delta 1.0 :link-type 'lex-sense))
     ;;add new link
     (progn
-      (add-link lex-category sense-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-      (add-link lex-category sense-category cxn-inventory :weight 1.0 :link-type 'lex-sense :recompute-transitive-closure nil))))
+      (add-link fe-category roleset-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+      (add-link fe-category roleset-category cxn-inventory :weight 1.0 :link-type 'lex-sense :recompute-transitive-closure nil))))
 
 
 
 
-(defun add-pp-cxn (gold-frame units-with-role cxn-inventory propbank-sentence lex-category ts-unit-structure)
+(defun add-pp-cxn (gold-frame units-with-role cxn-inventory propbank-sentence fe-category ts-unit-structure)
   "Learns a construction capturing V + ARGM-pp."
   (let* ((pp-unit (find "ARGM" units-with-role :key #'(lambda (unit-w-role)
                                                          (role-type (car unit-w-role))) :test #'search))
@@ -518,17 +512,17 @@ categorial network and returns it."
                               :key #'feature-name)))
             (second (find 'lemma (nthcdr 2 (third cxn-preposition-units))
                                           :key #'feature-name))))
-         (gram-category (make-gram-category units-with-role preposition-lemma))
+         (argst-category (make-argst-category units-with-role preposition-lemma))
          (footprint (make-const 'pp))
          
          (cxn-units-with-role (loop for unit in units-with-role
                                      if (equal (role-type (car unit)) "V")
-                                     collect (make-propbank-conditional-unit-with-role unit gram-category footprint :frame-evoking t)
-                                     else collect (make-propbank-conditional-unit-with-role unit gram-category footprint)))
-         (contributing-unit (make-propbank-contributing-unit units-with-role gold-frame gram-category footprint :include-gram-category? nil))
+                                     collect (make-propbank-conditional-unit-with-role unit argst-category footprint :frame-evoking t)
+                                     else collect (make-propbank-conditional-unit-with-role unit argst-category footprint)))
+         (contributing-unit (make-propbank-contributing-unit units-with-role gold-frame argst-category footprint :include-argst-category? nil))
          (cxn-units-without-role (make-propbank-conditional-units-without-role units-with-role cxn-units-with-role ts-unit-structure))
          
-         (cxn-name (intern (upcase (format nil "~a+~a-cxn" gram-category (length cxn-units-without-role))) :fcg-propbank))
+         (cxn-name (intern (upcase (format nil "~a+~a-cxn" argst-category (length cxn-units-without-role))) :fcg-propbank))
          (schema (make-cxn-schema units-with-role cxn-units-with-role :argm-pp :cxn-preposition-units (list cxn-preposition-units)))
          (equivalent-cxn (find-equivalent-cxn schema
                                               (syn-classes (append cxn-units-with-role
@@ -545,26 +539,26 @@ categorial network and returns it."
       (progn
         ;;1) Increase its frequency
         (incf (attr-val equivalent-cxn :score))
-        ;;2) Check if there was already a link in the type hierarchy between the lex-category and the gram-category:
-        (if (link-exists-p lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :link-type nil)
+        ;;2) Check if there was already a link in the type hierarchy between the fe-category and the argst-category:
+        (if (link-exists-p fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :link-type nil)
           ;;a) If yes, increase edge weight
           (progn
-            (incf-link-weight lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :delta 1.0 :link-type nil)
-            (incf-link-weight lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :delta 1.0 :link-type 'lex-gram))
+            (incf-link-weight fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :delta 1.0 :link-type nil)
+            (incf-link-weight fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :delta 1.0 :link-type 'lex-gram))
           ;;b) Otherwise, add new connection (weight 1.0)
           (progn
-            (add-link lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-          (add-link lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)))
-        ;;3) Return gram-category
-        (attr-val equivalent-cxn :gram-category))
+            (add-link fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+          (add-link fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)))
+        ;;3) Return argst-category
+        (attr-val equivalent-cxn :argst-category))
       
       ;; Else: Create a new grammatical category for the observed pattern + add category and link to the categorial network
       ;;-------------------------------------------------------------------------------------------------------------------
       (when (and cxn-units-with-role (v-lemma units-with-role))
         (assert preposition-lemma)
-        (add-category gram-category cxn-inventory :recompute-transitive-closure nil)
-        (add-link lex-category gram-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-        (add-link lex-category gram-category cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)
+        (add-category argst-category cxn-inventory :recompute-transitive-closure nil)
+        (add-link fe-category argst-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+        (add-link fe-category argst-category cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)
         
         (eval `(def-fcg-cxn ,cxn-name
                             (,contributing-unit
@@ -577,10 +571,10 @@ categorial network and returns it."
                                          :lemma ,preposition-lemma
                                          :label argm-phrase-cxn
                                          :score 1
-                                         :gram-category ,gram-category)
+                                         :argst-category ,argst-category)
                             :description ,(sentence-string propbank-sentence)
                             :cxn-inventory ,cxn-inventory))
-        gram-category))))
+        argst-category))))
 
 
 
@@ -605,9 +599,9 @@ categorial network and returns it."
                                   units-with-role))
          (v-unit (v-unit units-with-role))
          (lex-cxn (find-lexical-cxn v-unit cxn-inventory))
-         (lex-category (when lex-cxn (attr-val lex-cxn :lex-category)))
-         (gram-categories
-          (when lex-category
+         (fe-category (when lex-cxn (attr-val lex-cxn :fe-category)))
+         (argst-categories
+          (when fe-category
             (remove nil
                     (loop with v-unit-with-role = (v-unit-with-role units-with-role)
                           for argm-sbar in argm-sbars
@@ -621,29 +615,29 @@ categorial network and returns it."
                                               collect (let ((units-with-role (if v-unit-found? ;;v-unit precedes argm-pp-unit
                                                                                (list v-unit-with-role argm-sbar)
                                                                                (list argm-sbar v-unit-with-role))))
-                                                        (add-sbar-cxn gold-frame units-with-role cxn-inventory propbank-sentence lex-category ts-unit-structure))))))))
+                                                        (add-sbar-cxn gold-frame units-with-role cxn-inventory propbank-sentence fe-category ts-unit-structure))))))))
             
-    (loop for gram-category in gram-categories
-          do (add-word-sense-cxn gold-frame v-unit cxn-inventory propbank-sentence lex-category gram-category)))) ;;only one cxn, multiple links in th
+    (loop for argst-category in argst-categories
+          do (add-word-sense-cxn gold-frame v-unit cxn-inventory propbank-sentence fe-category argst-category)))) ;;only one cxn, multiple links in th
 
 
-(defun add-sbar-cxn (gold-frame units-with-role cxn-inventory propbank-sentence lex-category ts-unit-structure)
+(defun add-sbar-cxn (gold-frame units-with-role cxn-inventory propbank-sentence fe-category ts-unit-structure)
   "Learns a construction capturing V + ARGM-sbar."
   (let* ((sbar-unit (find "ARGM" units-with-role :key #'(lambda (unit-w-role)
                                                           (role-type (car unit-w-role))) :test #'search))
          (cxn-sbar-unit (make-subclause-word-unit sbar-unit ts-unit-structure))
          (sbar-lemma (second (or (find 'lemma (nthcdr 2 cxn-sbar-unit) :key #'feature-name)
                                  (find 'string (nthcdr 2 cxn-sbar-unit) :key #'feature-name))))
-         (gram-category (make-gram-category units-with-role sbar-lemma))
+         (argst-category (make-argst-category units-with-role sbar-lemma))
          (footprint (make-const 'sbar))
           ;;1 unit
          (cxn-units-with-role (loop for unit in units-with-role
                                     if (equal (role-type (car unit)) "V")
-                                      collect (make-propbank-conditional-unit-with-role unit gram-category footprint :frame-evoking t)
-                                    else collect (make-propbank-conditional-unit-with-role unit gram-category footprint)))
-         (contributing-unit (make-propbank-contributing-unit units-with-role gold-frame gram-category footprint :include-gram-category? nil))
+                                      collect (make-propbank-conditional-unit-with-role unit argst-category footprint :frame-evoking t)
+                                    else collect (make-propbank-conditional-unit-with-role unit argst-category footprint)))
+         (contributing-unit (make-propbank-contributing-unit units-with-role gold-frame argst-category footprint :include-argst-category? nil))
          (cxn-units-without-role (make-propbank-conditional-units-without-role units-with-role cxn-units-with-role ts-unit-structure))
-         (cxn-name (intern (upcase (format nil "~a+~a-cxn" gram-category (length cxn-units-without-role))) :fcg-propbank))
+         (cxn-name (intern (upcase (format nil "~a+~a-cxn" argst-category (length cxn-units-without-role))) :fcg-propbank))
          (schema (make-cxn-schema units-with-role cxn-units-with-role :argm-sbar :cxn-s-bar-units (list cxn-sbar-unit)))
          (equivalent-cxn (find-equivalent-cxn schema
                                               (syn-classes (append cxn-units-with-role
@@ -660,27 +654,27 @@ categorial network and returns it."
         ;;1) Increase its frequency
         (incf (attr-val equivalent-cxn :score))
         
-        ;;2) Check if there was already a link in the type hierarchy between the lex-category and the gram-category:
-        (if (link-exists-p lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :link-type nil)
+        ;;2) Check if there was already a link in the type hierarchy between the fe-category and the argst-category:
+        (if (link-exists-p fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :link-type nil)
           ;;a) If yes, increase edge weight
           (progn
-            (incf-link-weight lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :delta 1.0 :link-type nil)
-            (incf-link-weight lex-category (attr-val equivalent-cxn :gram-category) cxn-inventory :delta 1.0 :link-type 'lex-gram))
+            (incf-link-weight fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :delta 1.0 :link-type nil)
+            (incf-link-weight fe-category (attr-val equivalent-cxn :argst-category) cxn-inventory :delta 1.0 :link-type 'lex-gram))
           ;;b) Otherwise, add new connection (weight 1.0)
           (progn
-            (add-link lex-category
-                    (attr-val equivalent-cxn :gram-category) cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-          (add-link lex-category
-                    (attr-val equivalent-cxn :gram-category) cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)))
+            (add-link fe-category
+                    (attr-val equivalent-cxn :argst-category) cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+          (add-link fe-category
+                    (attr-val equivalent-cxn :argst-category) cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)))
         
-        ;;3) Return gram-category
-        (attr-val equivalent-cxn :gram-category))
+        ;;3) Return argst-category
+        (attr-val equivalent-cxn :argst-category))
       
       ;;Create a new grammatical category for the observed pattern + add category and link to the type hierarchy
       (when (and cxn-units-with-role (v-lemma units-with-role))
-        (add-category gram-category cxn-inventory :recompute-transitive-closure nil)
-        (add-link lex-category gram-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
-        (add-link lex-category gram-category cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)
+        (add-category argst-category cxn-inventory :recompute-transitive-closure nil)
+        (add-link fe-category argst-category cxn-inventory :weight 1.0 :link-type nil :recompute-transitive-closure nil)
+        (add-link fe-category argst-category cxn-inventory :weight 1.0 :link-type 'lex-gram :recompute-transitive-closure nil)
 
         (unless (find (unit-name cxn-sbar-unit) cxn-units-with-role :key #'unit-name :test #'equal) ;;check for avoiding duplicate unit names as a consequence of too flat constituency structures
           (eval `(def-fcg-cxn ,cxn-name
@@ -696,10 +690,10 @@ categorial network and returns it."
                                                      sbar-lemma)
                                            :label argm-phrase-cxn
                                            :score 1
-                                           :gram-category ,gram-category)
+                                           :argst-category ,argst-category)
                               :description ,(sentence-string propbank-sentence)
                               :cxn-inventory ,cxn-inventory))
-          gram-category)))))
+          argst-category)))))
 
 
 
@@ -759,7 +753,7 @@ categorial network and returns it."
                 if (equal (role-type (car unit-w-role)) "V")
                 collect (make-propbank-conditional-unit-with-role unit-w-role nil footprint :frame-evoking t)
                 else collect (make-propbank-conditional-unit-with-role unit-w-role nil footprint :string argm-string)))
-         (contributing-unit (make-propbank-contributing-unit units-with-role gold-frame nil footprint :include-gram-category? nil))
+         (contributing-unit (make-propbank-contributing-unit units-with-role gold-frame nil footprint :include-argst-category? nil))
          (cxn-units-without-role (make-propbank-conditional-units-without-role units-with-role cxn-units-with-role ts-unit-structure))
 
          (cxn-name (make-cxn-name units-with-role cxn-units-with-role cxn-units-without-role :argm-phrase :phrase argm-string))
