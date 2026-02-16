@@ -73,7 +73,13 @@
 ;; that it is initially empty (0 constructions). The construction-inventory is stored by default
 ;; in the local variable *fcg-constructions*.
 
-(def-fcg-constructions my-first-grammar)
+(def-fcg-constructions my-first-grammar
+  :feature-types ((form set-of-predicates)
+                  (meaning set-of-predicates)
+                  (subunits set)
+                  (footprints set))
+  :fcg-configurations ((:de-render-mode . :de-render-string-meets)
+                       (:render-mode . :generate-and-test)))
 
 ;; 3.2. Defining a construction
 ;; ----------------------------
@@ -179,6 +185,7 @@
 ;; browser every between two construction applications.
 
 ;; In comprehension
+(comprehend "the mouse" :cxn-inventory *fcg-constructions*)
 (comprehend '("the" "mouse") :cxn-inventory *fcg-constructions*)
 (comprehend '("mouse" "the"))
 
