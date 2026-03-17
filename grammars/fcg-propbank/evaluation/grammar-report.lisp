@@ -25,8 +25,14 @@
         (nr-of-fe-cxns (nr-of-cxns-of-type grammar 'lexical-cxn))
         (nr-of-argst-cxns (nr-of-cxns-of-type grammar 'argument-structure-cxn))
         (nr-of-roleset-cxns (nr-of-cxns-of-type grammar 'word-sense-cxn))
-        (total-nr-of-cxns (size grammar)))
-
+        (total-nr-of-cxns (size grammar))
+        (average-and-median-network-degree (multiple-value-list (average-degree grammar)))
+        (average-and-median-degree-fe-argst (multiple-value-list (average-degree grammar :from-to '(fe argst))))
+        (average-and-median-degree-argst-fe (multiple-value-list (average-degree grammar :from-to '(argst fe))))
+        (average-and-median-degree-argst-roleset (multiple-value-list (average-degree grammar :from-to '(argst roleset))))
+        (average-and-median-degree-roleset-argst (multiple-value-list (average-degree grammar :from-to '(roleset argst))))
+        (average-and-median-degree-roleset-fe (multiple-value-list (average-degree grammar :from-to '(roleset fe))))
+        (average-and-median-degree-fe-roleset (multiple-value-list (average-degree grammar :from-to '(fe roleset)))))
       
     (format t "Number of constructions:~%")
     (format t "   All cxns: ~a~%" total-nr-of-cxns)
@@ -60,14 +66,22 @@
     (format t "      Number of non-hapax cxns: ~a of ~a ~%" (fourth roleset-cxn-sum-average-median-non-hapax-frequency) nr-of-roleset-cxns)
     (format t "~%---------------------------------------------------------------------------------~%~%")
     (format t "Construction network information:~%")
-    (format t "   Average degree (argst-roleset): ~a ~%" (average-degree grammar))
-    (format t "   Average degree (fe-roleset): ~a ~%" (average-degree grammar :edge-type 'lex-sense))
-    (format t "   Average degree (fe-argst): ~a ~%" (average-degree grammar :edge-type 'lex-gram))
+    (format t "   All cxns: ~%" )
+    (format t "     Average degree: ~a ~%" (first average-and-median-network-degree))
+    (format t "     Median degree: ~a ~%~%" (second average-and-median-network-degree))
+
+    (format t "   Average degrees: ~%" )
+    (format t "     Frame-evoking -> Argument structure cxns: ~a ~%" (first average-and-median-degree-fe-argst))
+    (format t "     Argument structure -> Frame-evoking cxns: ~a ~%" (first average-and-median-degree-argst-fe))
+    (format t "     Frame-evoking -> Roleset cxns: ~a ~%" (first average-and-median-degree-fe-roleset))
+    (format t "     Roleset -> Frame-evoking cxns: ~a ~%" (first average-and-median-degree-roleset-fe))
+    (format t "     Argument structure -> Roleset cxns: ~a ~%" (first average-and-median-degree-argst-roleset))
+    (format t "     Roleset -> Argument structure cxns: ~a ~%" (first average-and-median-degree-roleset-argst))
     
     (format t "~%---------------------------------------------------------------------------------~%")
     ))
 
-;; (grammar-report *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)
+;; (grammar-report *grammar*)
 
 (defun nr-of-cxns-of-type (grammar type)
   "Count nr of type in grammar."
@@ -87,14 +101,94 @@
         
 ;; (sum-average-median-non-hapax-frequency *propbank-grammar-ontonotes-ewt-core-roles* :type 'word-sense-cxn)
 
-(defun average-degree (grammar &key (edge-type 'gram-sense))
-  "Calculates average degree of grammar network."
-  (loop for value being the hash-values of (graph-utils::matrix (gethash edge-type
-                                                                         (graph-utils::matrix
-                                                                          (fcg::graph (categorial-network grammar)))))
-      collect (hash-table-count value) into degrees
-      finally (return (average degrees))))
+   
+(defun average-degree (grammar &key from-to)
+  "Computes average degree of nodes in grammar network, returning the median as a second value."
+  (loop for cxn in (constructions-list grammar)
+        for cxn-cat = (cond ((eql (first from-to) 'fe)
+                             (attr-val cxn :fe-category))
+                            ((eql (first from-to) 'argst)
+                             (attr-val cxn :argst-category))
+                            ((eql (first from-to) 'roleset)
+                             (attr-val cxn :roleset-category))
+                            (t
+                             (or (attr-val cxn :fe-category)
+                                 (attr-val cxn :argst-category)
+                                 (attr-val cxn :roleset-category))))
+          when cxn-cat
+          collect (let* ((node-id (gethash cxn-cat (graph-utils::nodes (fcg::graph (categorial-network grammar)))))
+                         (edge-type (cond ((or (equalp from-to '(fe argst))
+                                               (equalp from-to '(argst fe)))
+                                           'lex-gram)
+                                          ((or (equalp from-to '(roleset argst))
+                                               (equalp from-to '(argst roleset)))
+                                           'gram-sense)
+                                          ((or (equalp from-to '(fe roleset))
+                                               (equalp from-to '(roleset fe)))
+                                           'lex-sense)
+                                          (t nil)))
+                         (neighbours-hash-table (gethash node-id (graph-utils::matrix
+                                                                  (gethash edge-type (graph-utils::matrix
+                                                                                      (fcg::graph (categorial-network grammar))))))))
+                    (hash-table-count neighbours-hash-table)) into degrees
+        finally (return (values (average degrees) (median degrees)))))
         
-;; (average-degree *propbank-grammar-ontonotes-ewt-core-roles-full-corpus*)
+;; (average-degree *grammar* :from-to '(fe argst))
+;; (average-degree *grammar* :from-to '(argst fe))
 
 
+(defun weighted-average-degree (grammar)
+  "Computes the weighted average degree of nodes in grammar network"
+  (loop for cxn in (constructions-list grammar)
+        for cxn-cat = (or (attr-val cxn :fe-category)
+                          (attr-val cxn :argst-category)
+                          (attr-val cxn :roleset-category))
+        for node-id = (gethash cxn-cat (graph-utils::nodes (fcg::graph (categorial-network grammar))))
+        for neighbours-hash-table = (gethash node-id (graph-utils::matrix
+                                                      (gethash nil (graph-utils::matrix (fcg::graph (categorial-network grammar))))))
+        collect (loop for value being the hash-values of neighbours-hash-table
+                      collect value into weighted-values
+                      finally (return (* (average weighted-values)
+                                         (hash-table-count neighbours-hash-table)))) into weighted-degrees
+        finally (return (average weighted-degrees))))
+
+;; (weighted-average-degree *grammar*)
+
+(defun cxn-network-connection-strengths (grammar)
+  "Returns the weights in the construction network, ordered by strength."
+  (loop for cxn in (constructions-list grammar)
+        for cxn-cat = (or (attr-val cxn :fe-category)
+                          (attr-val cxn :argst-category)
+                          (attr-val cxn :roleset-category))
+        for node-id = (gethash cxn-cat (graph-utils::nodes (fcg::graph (categorial-network grammar))))
+        for neighbours-hash-table = (gethash node-id (graph-utils::matrix
+                                                      (gethash nil (graph-utils::matrix (fcg::graph (categorial-network grammar))))))
+        append (loop for neighbour being the hash-keys of neighbours-hash-table
+                        collect (gethash neighbour neighbours-hash-table) into cxn-connection-strengths
+                        finally (return cxn-connection-strengths)) into network-connection-strengths
+        finally (return (sort network-connection-strengths #'>))))
+
+#|(setf *strengths* (cxn-network-connection-strengths *grammar*))
+
+(with-open-file (f (babel-pathname :directory '(".tmp")
+                                   :name "cxn-connection-strenghts"
+                                   :type "lisp")
+                   :if-does-not-exist :create :direction :output :if-exists :supersede)
+  (write-line (format nil "((~a))" *strengths*) f))
+
+;(ql:quickload :plot-raw-data)
+
+(plot-raw-data::raw-files->evo-plot  
+ :raw-file-paths '((".tmp" "cxn-connection-strenghts"))
+ ;:average-windows 1
+ :logscale 'xy
+ :y1-label "Connection strength (log)"
+ :x-label "Rank (log)"
+ :colors '("medium-blue")
+ ;:captions '("Frame-evoking cxns" "Argument structure cxns" "Roleset cxns")
+ :fsize 11
+ :grid-line-width 0.1
+ :line-width 2.5
+ ;:end 1000
+ ;:step 1
+  )|#

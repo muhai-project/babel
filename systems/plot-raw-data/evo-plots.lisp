@@ -41,7 +41,9 @@
         (error-bar-modes '(:filled)) ;; '(:lines :filled)
         (open t)
         (unicode t)
-        (key-box nil))
+        (key-box nil)
+        (step nil) ;; plot every step data points on x axis (nil computes good value for you)
+        )
   "Takes the :raw-file-paths and generates one single merged evo-plot
 for them. An evo-plot is a line-plot that has number of games on the
 x-axis."
@@ -106,13 +108,14 @@ x-axis."
                    :open open
                    :unicode unicode
                    :key-box key-box
+                   :step step
                    )))
 
 ;; ##################### evo-plot creation ######################
 
 (defun compute-data-points (data &key 
                                  (minimum-number-of-data-points 500) (divide-indices-by 1) 
-                                 (error-bars nil) (average-mode :mean))
+                                 (error-bars nil) (average-mode :mean) (step nil))
   (let* ((data (loop for source in data
                      collect (reverse source))))
     (compute-index-and-data-points
@@ -120,7 +123,8 @@ x-axis."
      ;; I think this value is way too big (for speed I'm just putting a fixed 500 now, like with monitors)
      ;(/ (length (car (car data))) 2) 
      minimum-number-of-data-points
-     error-bars divide-indices-by average-mode)))
+     error-bars divide-indices-by average-mode
+     :steps step)))
 
 (defun nearest-multiple (x m)
   "Finds the nearest number from x upward that is divisible by m"
@@ -286,15 +290,17 @@ x-axis."
                            (typeface "Helvetica")
                            (unicode t)
                            (key-box t)
+                           (step nil)
                            &allow-other-keys)
   (let ((data (compute-data-points data :divide-indices-by divide-indices-by
-                                   :error-bars error-bars :average-mode average-mode))
+                                   :error-bars error-bars :average-mode average-mode
+                                   :step step))
         (file-path (babel-pathname :name file-name
                                    :type (if (equal graphic-type "postscript") "ps" graphic-type)
                                    :directory directory)))
     (ensure-directories-exist file-path)
     (with-open-stream
-        (stream (monitors::pipe-to-gnuplot))
+        (stream  (monitors::pipe-to-gnuplot))
       (set-gnuplot-parameters stream
                               :output file-path :terminal graphic-type :title title
                               :draw-y1-grid draw-y1-grid :grid-line-width grid-line-width
@@ -335,7 +341,7 @@ x-axis."
               do (when (fourth source)
                    (format stream "'-' axes x1y~:[1~;~:*~d~] notitle with errorbars lw ~a dt ~a lc rgb ~s,"
                            (nth source-number use-y-axis) line-width dashtype color))))
-      (loop for source in data 
+      (loop for nil in data 
             for source-number from 0
             for color = (nth (mod source-number (length colors)) colors)
             for dashtype = (nth (mod source-number (length *great-gnuplot-dashtypes*))
