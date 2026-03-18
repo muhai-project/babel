@@ -83,6 +83,7 @@
 
 ;; (grammar-report *grammar*)
 
+;(add-element (make-html (find-cxn 'ARG0\(NP\)+V\(V\)+ARG1\(NP\)-8+3-CXN  *grammar*)))
 (defun nr-of-cxns-of-type (grammar type)
   "Count nr of type in grammar."
   (loop for cxn in (constructions-list grammar)
@@ -102,6 +103,115 @@
 ;; (sum-average-median-non-hapax-frequency *propbank-grammar-ontonotes-ewt-core-roles* :type 'word-sense-cxn)
 
    
+(defun degrees-sorted (grammar &key from-to)
+  "Computes average degree of nodes in grammar network, returning the median as a second value."
+  (loop for cxn in (constructions-list grammar)
+        for cxn-cat = (cond ((eql (first from-to) 'fe)
+                             (attr-val cxn :fe-category))
+                            ((eql (first from-to) 'argst)
+                             (attr-val cxn :argst-category))
+                            ((eql (first from-to) 'roleset)
+                             (attr-val cxn :roleset-category))
+                            (t
+                             (or (attr-val cxn :fe-category)
+                                 (attr-val cxn :argst-category)
+                                 (attr-val cxn :roleset-category))))
+          when cxn-cat
+          collect (let* ((node-id (gethash cxn-cat (graph-utils::nodes (fcg::graph (categorial-network grammar)))))
+                         (edge-type (cond ((or (equalp from-to '(fe argst))
+                                               (equalp from-to '(argst fe)))
+                                           'lex-gram)
+                                          ((or (equalp from-to '(roleset argst))
+                                               (equalp from-to '(argst roleset)))
+                                           'gram-sense)
+                                          ((or (equalp from-to '(fe roleset))
+                                               (equalp from-to '(roleset fe)))
+                                           'lex-sense)
+                                          (t nil)))
+                         (neighbours-hash-table (gethash node-id (graph-utils::matrix
+                                                                  (gethash edge-type (graph-utils::matrix
+                                                                                      (fcg::graph (categorial-network grammar))))))))
+                    (hash-table-count neighbours-hash-table)) into degrees
+        finally (return (values (sort degrees  #'>) (median degrees)))))
+
+
+
+
+#|
+(progn
+  (setf *fe->argst* (degrees-sorted *grammar* :from-to '(fe argst)))
+
+(with-open-file (f (babel-pathname :directory '(".tmp")
+                                   :name "fe->argst"
+                                   :type "lisp")
+                   :if-does-not-exist :create :direction :output :if-exists :supersede)
+  (write-line (format nil "((~a))" *fe->argst*) f))
+
+(setf *argst->fe* (degrees-sorted *grammar* :from-to '(argst fe)))
+
+(with-open-file (f (babel-pathname :directory '(".tmp")
+                                   :name "argst->fe"
+                                   :type "lisp")
+                   :if-does-not-exist :create :direction :output :if-exists :supersede)
+  (write-line (format nil "((~a))" *argst->fe*) f))
+
+
+(setf *argst->roleset* (degrees-sorted *grammar* :from-to '(argst roleset)))
+
+(with-open-file (f (babel-pathname :directory '(".tmp")
+                                   :name "argst->roleset"
+                                   :type "lisp")
+                   :if-does-not-exist :create :direction :output :if-exists :supersede)
+  (write-line (format nil "((~a))" *argst->roleset*) f))
+
+(setf *roleset->argst* (degrees-sorted *grammar* :from-to '(roleset argst))) 
+
+(with-open-file (f (babel-pathname :directory '(".tmp")
+                                   :name "roleset->argst"
+                                   :type "lisp")
+                   :if-does-not-exist :create :direction :output :if-exists :supersede)
+  (write-line (format nil "((~a))" *roleset->argst*) f))
+
+(setf *roleset->fe* (degrees-sorted *grammar* :from-to '(roleset fe)))
+
+(with-open-file (f (babel-pathname :directory '(".tmp")
+                                   :name "roleset->fe"
+                                   :type "lisp")
+                   :if-does-not-exist :create :direction :output :if-exists :supersede)
+  (write-line (format nil "((~a))" *roleset->fe*) f))
+
+
+(setf *fe->roleset* (degrees-sorted *grammar* :from-to '( fe roleset)))
+
+(with-open-file (f (babel-pathname :directory '(".tmp")
+                                   :name "fe->roleset"
+                                   :type "lisp")
+                   :if-does-not-exist :create :direction :output :if-exists :supersede)
+  (write-line (format nil "((~a))" *fe->roleset*) f))
+
+;(ql:quickload :plot-raw-data)
+
+(plot-raw-data::raw-files->evo-plot  
+ :raw-file-paths '((".tmp" "fe->argst")
+                   (".tmp" "argst->fe")
+                   (".tmp" "argst->roleset")
+                   (".tmp" "roleset->argst")
+                   (".tmp" "roleset->fe")
+                   (".tmp" "fe->roleset"))
+ :logscale 'xy
+ :y1-label "Number of links (log)"
+ :x-label "Rank (log)"
+ ;:colors '("medium-blue")
+ ;:captions '("Frame-evoking cxns" "Argument structure cxns" "Roleset cxns")
+ :fsize 11
+ :grid-line-width 0.1
+ :key-box t
+ :key-location 'top
+ :line-width 2.5
+ :step 1
+  ))|#
+
+
 (defun average-degree (grammar &key from-to)
   "Computes average degree of nodes in grammar network, returning the median as a second value."
   (loop for cxn in (constructions-list grammar)
@@ -135,6 +245,7 @@
         
 ;; (average-degree *grammar* :from-to '(fe argst))
 ;; (average-degree *grammar* :from-to '(argst fe))
+
 
 
 (defun weighted-average-degree (grammar)

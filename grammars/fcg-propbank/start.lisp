@@ -22,6 +22,19 @@
 
 (defparameter *ontonotes-corpus-annotated-with-init-ts* (cl-store:restore *ontonotes-init-ts-annotated-corpus-file*))
 
+(defun remove-frames-with-single-role (list-of-fcg-propbank-sentences)
+  "Remove PropBank roleset instances that only have a single role (V)
+to avoid learning argument structure constructions that would be too
+greedy. "
+  (loop for sentence in list-of-fcg-propbank-sentences
+        for filtered-propbank-frames = (loop for frame in (propbank-frames sentence)
+                                             when (find-if #'digit-char-p (frame-roles frame)
+                                                           :key #'(lambda (frame-role)
+                                                                    (uiop::last-char (role-type frame-role))))
+                                               collect frame)
+        do (setf (propbank-frames sentence) filtered-propbank-frames)
+        finally (return list-of-fcg-propbank-sentences)))
+
 
 
 ;; Learning grammars from the annotated data
@@ -34,6 +47,8 @@
                                     (train-split *ewt-corpus-annotated-with-init-ts*)
                                     (test-split *ewt-corpus-annotated-with-init-ts*)
                                     (dev-split *ewt-corpus-annotated-with-init-ts*)))
+
+(setf *full-corpus* (remove-frames-with-single-role *full-corpus*))
 
 
 (defparameter *training-set* nil)
@@ -63,16 +78,59 @@
                                     :name "propbank-learned"
                                     :type "fcg")))
 
+;; Remove hapaxes
+;;;;;;;;;;;;;;;;;;
+
+(defun remove-hapaxes (grammar)
+  "Deletes constructions with frequency of 1 from the construction
+inventory, including deleting their associated categories from the
+categorial network."
+  (loop with cats-to-remove = nil
+        for cxn in (constructions-list grammar)
+        if (= (attr-val cxn :score) 1)
+          do (let ((cxn-category (case (attr-val cxn :label)
+                                   (lexical-cxn (attr-val cxn :fe-category))
+                                   (argument-structure-cxn (attr-val cxn :argst-category))
+                                   (word-sense-cxn (attr-val cxn :roleset-category)))))
+               (delete-cxn (name cxn) grammar :key #'name)
+               (delete-cxn (name cxn) (processing-cxn-inventory grammar) :key #'name)
+               (push cxn-category cats-to-remove)
+               (format t "."))
+        finally (remove-categories cats-to-remove grammar :recompute-transitive-closure t)))
+
+;(remove-hapaxes *propbank-grammar-core-roles*)
+
+#|(defun clean-up-links (removed-categories grammar)
+  (loop for (cat-1 cat-2 link-type) in (links (categorial-network grammar))
+        when (or (find cat-1 removed-categories :test #'equal)
+                 (find cat-2 removed-categories :test #'equal))
+          do (progn 
+               (remove-link cat-1 cat-2 (categorial-network grammar) :link-type link-type)
+               (format t "L"))))|#
+       
+
 ;; Using a learnt grammar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (activate-monitor trace-fcg)
+;; (deactivate-monitor trace-fcg)
 ;; (defparameter nlp-tools::*penelope-host* "http://127.0.0.1:5000")
 
 (comprehend-and-extract-frames "First, Moses told the people every command in the law."
                                :cxn-inventory *propbank-grammar-core-roles*)
 
-(comprehend-and-extract-frames "The children sent him a cake."
+(comprehend-and-extract-frames "Margaret Thatcher was elected Prime Minister of Britain."
+                               :cxn-inventory *propbank-grammar-core-roles*)
+
+(comprehend-and-extract-frames "She especially enjoyed visiting the old historic churches."
+                               :cxn-inventory *propbank-grammar-core-roles*)
+
+(comprehend-and-extract-frames "Attention passengers, the taxi is arriving at Gate 1."
+                               :cxn-inventory *propbank-grammar-core-roles*)
+
+(comprehend-and-extract-frames "Explain this to me again."
+                               :cxn-inventory *propbank-grammar-core-roles*)
+
+(comprehend-and-extract-frames "She has explained it to me."
                                :cxn-inventory *propbank-grammar-core-roles*)
 
 (loop for propbank-utterance in (subseq *test-set* 2 4)
@@ -103,10 +161,10 @@
 (pprint (graph-utils::closest-nodes 'EXPLAIN.01 (fcg::graph (categorial-network *propbank-grammar-core-roles*))
                                     :edge-type 'gram-sense))
 
-(pprint (graph-utils::closest-nodes 'TELL\(V\)-1 (fcg::graph (categorial-network *propbank-grammar-core-roles*))
+(pprint (graph-utils::closest-nodes 'TELL\(V\) (fcg::graph (categorial-network *propbank-grammar-core-roles*))
                                     :edge-type 'lex-gram))
 
-(find-cxn 'TELL.01-cxn
+
 
  ;; Evaluating a learnt grammar
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -186,7 +244,7 @@
  :grid-line-width 0.1
  :line-width 2.5
  :step 1
- ;;:end 50
+ ;:end 50
   )
 
 (length *cxns-sorted-by-freq*)
