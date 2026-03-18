@@ -1,6 +1,6 @@
 (in-package :fcg)
 
-(export '(anti-unify-predicate-network
+(export '(anti-unify-predicate-network anti-unification-result
           generalisation pattern-bindings source-bindings
           pattern-delta source-delta cost))
 
