@@ -65,7 +65,7 @@
 
 
 (defparameter *clevr-stage-1-train*
-  (merge-pathnames (make-pathname :directory '(:relative "clevr-grammar-learning-ipa" "train")
+  (merge-pathnames (make-pathname :directory '(:relative "CLEVR-like\ datasets" "clevr-grammar-learning-ipa" "train")
                                   :name "stage-1" 
                                   :type "jsonl")
                    cl-user:*babel-corpora*))
@@ -79,7 +79,7 @@
 
 
 (setf (counter *clevr-stage-1-train-processor*) 0)
-(comprehend *clevr-stage-1-train-processor* :cxn-inventory *clevr-stage-1-grammar*  :nr-of-speech-acts 1)
+(comprehend *clevr-stage-1-train-processor* :cxn-inventory *clevr-stage-1-grammar*  :nr-of-speech-acts 100)
 
 
 (loop for cxn in (constructions-list *clevr-stage-1-grammar*)
