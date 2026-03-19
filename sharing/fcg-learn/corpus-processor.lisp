@@ -13,21 +13,27 @@
    (source-file :accessor source-file :initarg :source-file :type pathname :initform nil))
   (:documentation "Class for corpus processor"))
 
-(defmethod load-corpus ((path pathname) &key (sort-p nil) (remove-duplicates nil) (ipa nil))
+(defmethod load-corpus ((path pathname) &key (sort-p nil) (remove-duplicates nil) (ipa nil) (amr nil) (remove-punctuation nil))
   "Loads the json corpus at path, creates speech acts and adds them to corpus processor. Returns corpus processor."
   (let ((speech-acts (with-open-file (stream path)
                        (loop for line = (read-line stream nil)
                              for data = (when line (cl-json:decode-json-from-string line))
                              while data
                              collect (make-instance 'speech-act
-                                                   :form (if ipa
-                                                           (cdr (assoc :utterance--ipa data))
-                                                           (cdr (assoc :utterance data)))
-                                                   :meaning (pn:instantiate-predicate-network
-                                                             (read-from-string (cdr (assoc :meaning data)))))))))
+                                                    :form (if ipa
+                                                            (cdr (assoc :utterance--ipa data))
+                                                            (let ((utterance (cdr (assoc :utterance data))))
+                                                              (if remove-punctuation
+                                                                (str:remove-punctuation utterance) ;;only keep alphanumerical characters
+                                                                utterance)))
+                                                    :meaning (if amr
+                                                               (amr:penman->predicates
+                                                                (read-from-string (cdr (assoc :meaning data))))
+                                                               (pn:instantiate-predicate-network
+                                                                (read-from-string (cdr (assoc :meaning data))))))))))
     ;; optionally sort speech acts by utterance length
     (when sort-p
-      (sort speech-acts #'< :key #'(lambda (speech-act) (length (form speech-act)))))
+      (sort speech-acts #'< :key #'(lambda (speech-act) (length (meaning speech-act)))))
 
     (when remove-duplicates
       (setf speech-acts (remove-duplicates speech-acts :test #'(lambda (s1 s2)

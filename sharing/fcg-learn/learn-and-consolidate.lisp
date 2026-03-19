@@ -91,8 +91,7 @@
                         for cat-2-to-add = (or (cdr (assoc cat-2 category-mapping))
                                                cat-2)
                         unless (link-exists-p cat-1-to-add cat-2-to-add cxn-inventory :link-type link-type)
-                          do 
-;; add links to network
+                          do ;; add links to network
                             (add-link cat-1-to-add cat-2-to-add cxn-inventory :weight 0.5 :link-type link-type :recompute-transitive-closure nil)
                             (push (cons cat-1-to-add cat-2-to-add) consolidated-links)))))
                       
