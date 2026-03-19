@@ -13,7 +13,7 @@
    (source-file :accessor source-file :initarg :source-file :type pathname :initform nil))
   (:documentation "Class for corpus processor"))
 
-(defmethod load-corpus ((path pathname) &key (sort-p nil) (remove-duplicates nil) (ipa nil) (amr nil) (remove-punctuation nil))
+(defmethod load-corpus ((path pathname) &key (sort-p nil) (remove-duplicates nil) (ipa nil) (amr nil) (remove-punctuation nil) (shuffle t))
   "Loads the json corpus at path, creates speech acts and adds them to corpus processor. Returns corpus processor."
   (let ((speech-acts (with-open-file (stream path)
                        (loop for line = (read-line stream nil)
@@ -31,9 +31,21 @@
                                                                 (read-from-string (cdr (assoc :meaning data))))
                                                                (pn:instantiate-predicate-network
                                                                 (read-from-string (cdr (assoc :meaning data))))))))))
-    ;; optionally sort speech acts by utterance length
+
+    ;; shuffle data for more randomness
+    (when shuffle
+      (shuffle speech-acts))
+    
+    ;; optionally sort speech acts by meaning first, then utterance length
     (when sort-p
-      (sort speech-acts #'< :key #'(lambda (speech-act) (length (meaning speech-act)))))
+      (setf speech-acts
+            (loop with speech-acts-grouped-by-meaning-size = (sort (group-by speech-acts #'(lambda (speech-act)
+                                                                                             (length (meaning speech-act))))
+                                                                   #'< :key #'first)
+                  for group in speech-acts-grouped-by-meaning-size
+                  for group-sorted-on-form = (sort (cdr group) #'< :key #'(lambda (speech-act) (length (form speech-act))))
+                  append group-sorted-on-form into speech-acts-sorted
+                  finally (return speech-acts-sorted))))
 
     (when remove-duplicates
       (setf speech-acts (remove-duplicates speech-acts :test #'(lambda (s1 s2)

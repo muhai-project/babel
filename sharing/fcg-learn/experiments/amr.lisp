@@ -36,7 +36,7 @@
                        (:parse-goal-tests :no-applicable-cxns :connected-semantic-network :no-sequence-in-root)
                        (:production-goal-tests :no-applicable-cxns :no-meaning-in-root :connected-structure)
                        (:node-tests :check-duplicate :restrict-nr-of-nodes :restrict-search-depth) ;;FCG default
-                       (:max-nr-of-nodes . 5000) ;;FCG default
+                       (:max-nr-of-nodes . 200) ;;FCG default
                        (:max-search-depth . 25) ;;FCG default
                        
                        ;; Construction supplier:
@@ -140,15 +140,46 @@
                    cl-user:*babel-corpora*))
 
 ;; Takes 10-20 seconds to load the corpus
-(defparameter *amr-little-prince-speech-act-processor* (load-corpus *amr-little-prince* :sort-p t :remove-duplicates nil :amr t))
+(defparameter *amr-little-prince-speech-act-processor* (load-corpus *amr-little-prince*
+                                                                    :sort-p t :remove-duplicates nil :amr t :remove-punctuation t :shuffle nil))
 
 ;; Initialise an empty grammar
 (defparameter *amr-little-prince-grammar* (make-amr-cxn-inventory-cxns))
 
 ;; Run a number of speech acts (stage 1 = 11991 speech acts)
-(comprehend *amr-little-prince-speech-act-processor* :cxn-inventory *amr-little-prince-grammar*  :nr-of-speech-acts 1)
+(comprehend *amr-little-prince-speech-act-processor* :cxn-inventory *amr-little-prince-grammar*  :nr-of-speech-acts 50)
+;;TO DO: check variablification if ?i in (i ?i) (nu: (?i ?i))
+
 
 
 ;; Optionally reset grammar and/or train processor
 ;;(setf *amr-little-prince-grammar* (make-amr-cxn-inventory-cxns))
 ;;(reset-cp *amr-little-prince-speech-act-processor*)
+
+
+;;Speech act 82: It is difficult
+;;Speech act 91: This is the desert
+;;>> "t" <-> domain
+;;waarom niet "is"
+
+
+"this is a ram"
+"this is magnificent"
+;;=> current string generalisation: "m"  why not "this is"?
+
+
+(print-sequences-anti-unification-results
+ (anti-unify-sequences '((sequence "that is a ram" ?l1 ?r1))
+                       `((sequence "it is an airplane" 0 ,(length "it is an airplane")))))
+
+
+(print-sequences-anti-unification-results
+ (anti-unify-form '((sequence "that is a ram" ?l1 ?r1)) ;;cxn form
+                  `((sequence "it is an airplane" 0 ,(length "it is an airplane"))) ;;speech act form
+                  :altschul-erickson
+                  '((:match-cost . 0)
+                    (:mismatch-cost . 1)
+                    (:gap-cost . 1)
+                    (:gap-opening-cost . 5)
+                    (:n-optimal-alignments . nil)
+                    (:max-nr-of-gaps . nil))))
