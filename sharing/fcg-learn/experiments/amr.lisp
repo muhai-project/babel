@@ -146,7 +146,8 @@
 (defparameter *amr-little-prince-grammar* (make-amr-cxn-inventory-cxns))
 
 ;; Run a number of speech acts (stage 1 = 11991 speech acts)
-(comprehend *amr-little-prince-speech-act-processor* :cxn-inventory *amr-little-prince-grammar*  :nr-of-speech-acts 2)
+(comprehend *amr-little-prince-speech-act-processor* :cxn-inventory *amr-little-prince-grammar*  :nr-of-speech-acts 1)
+
 
 ;; Optionally reset grammar and/or train processor
 ;;(setf *amr-little-prince-grammar* (make-amr-cxn-inventory-cxns))
