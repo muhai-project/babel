@@ -13,7 +13,8 @@
    (:module "amr"
     :serial t
     :components
-    ((:file "utils")))
+    ((:file "utils")
+     (:file "variablify")))
    (:module "irl"
     :serial t
     :components
