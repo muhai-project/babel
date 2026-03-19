@@ -57,7 +57,7 @@
 (defun escape-re-string (re-string)
   "Escapes regex special characters from literal string that will be used as regex."
   (loop with pattern-string = (copy-seq re-string)
-        for special-string in '("?" "(" ")" "/" "+" "*")
+        for special-string in '("?" "(" ")" "/" "+" "*" "\\")
         when (search special-string pattern-string)
           do (setf pattern-string (replace-all pattern-string special-string (string-append "\\" special-string)))
         finally (return pattern-string)))
