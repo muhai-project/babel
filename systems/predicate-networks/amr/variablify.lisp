@@ -21,6 +21,9 @@
                 collect (cons arg (variablify arg))))
          (variablified-network
           (loop for predicate in amr-network
-                collect (loop for arg in predicate
-                              collect (or (assqv arg renamings) arg)))))
+                collect (loop for i from 0
+                              for arg in predicate
+                              collect (or (and (> i 0) ;;never variablify predicate name!
+                                               (assqv arg renamings))
+                                          arg)))))
     (values variablified-network renamings)))
