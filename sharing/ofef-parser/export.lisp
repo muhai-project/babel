@@ -96,8 +96,10 @@
 
 (defmethod export-ofef ((unit conditional-unit) &key feature-types &allow-other-keys)
   "Export conditional unit."
-  (format nil "~a" unit)
-  )
+  (format nil "~%[~% ~a, ~%~a~%]"
+          (export-ofef (name unit))
+          (export-ofef-special (formulation-lock unit) :unit-structure :feature-types feature-types)
+          (export-ofef-special (formulation-lock unit) :unit-structure :feature-types feature-types)))
 
 (defmethod export-ofef ((configuration configuration) &key &allow-other-keys)
   "Export configuration."
@@ -139,36 +141,42 @@
 
 (defmethod export-ofef-special (symbol (mode (eql :eliminate-keyword-colon)) &key (feature-types)  &allow-other-keys)
   "Ofef-export of feature-value pair."
+  (declare (ignore feature-types))
   (format nil "\"~(~a~)\"" symbol))
 
 
-(defmethod export-ofef-special (cxns (mode (eql :constructions-list))  &key (feature-types) &allow-other-keys)
+(defmethod export-ofef-special (cxns (mode (eql :constructions-list))  &key feature-types &allow-other-keys)
   "Ofef-export of feature-value pair."
+  (declare (ignore feature-types))
   (loop for cxn in cxns
         collect (export-ofef cxn) into ofef-cxns
         finally (return (format nil "{~{~a~^,~%~}}" ofef-cxns))))
 
-(defmethod export-ofef-special (alist (mode (eql :alist))  &key (feature-types) &allow-other-keys)
+(defmethod export-ofef-special (alist (mode (eql :alist))  &key feature-types &allow-other-keys)
   "Ofef-export of feature-value pair."
+  (declare (ignore feature-types))
   (loop for (key . value) in alist
         for ofef-key = (export-ofef-special key :eliminate-keyword-colon)
         for ofef-value = (export-ofef value)
         collect (format nil "~a: ~a" ofef-key ofef-value) into ofef-alist
         finally (return (format nil "{~{~a~^,~%~}}" ofef-alist))))
 
-(defmethod export-ofef-special (feature-value-pairs (mode (eql :list-of-feature-value-pairs)) &key (feature-types) &allow-other-keys)
-  "Ofef-export of feature-value pair."
+(defmethod export-ofef-special (feature-value-pairs (mode (eql :list-of-feature-value-pairs)) &key feature-types &allow-other-keys)
+  "Ofef-export of feature-value pair list."
+  (declare (ignore feature-types))
   (loop for (feature . value) in feature-value-pairs
         collect (format nil "~a: ~a" (export-ofef feature) (export-ofef value)) into ofef-pairs
         finally (return (format nil "{~{~a~^,~%~}}" ofef-pairs))))
 
 
 (defmethod export-ofef-special (contributing-part (mode (eql :contributing-part)) &key feature-types &allow-other-keys)
+  "Ofef-export of the contributing pole of a cxn."
   (loop for unit in contributing-part
         collect (format nil "~a" (export-ofef unit :feature-types feature-types)) into ofef-units
-        finally (return (format nil "\"contributing-pole\": [~{~a~^,~}]" ofef-units))))
+        finally (return (format nil "\"contributing-pole\": [~{~a~^,~}~%]" ofef-units))))
 
 (defmethod export-ofef-special (contributing-part (mode (eql :conditional-part)) &key feature-types &allow-other-keys)
+  "Ofef-export of the contributing pole of a cxn."
   (loop for unit in contributing-part
         collect (format nil "~a" (export-ofef unit :feature-types feature-types)) into ofef-units
         finally (return (format nil "\"conditional-pole\": [~{~a~^,~}]" ofef-units))))
@@ -184,7 +192,7 @@
                           (if (atom top-level-feature-value)
                             (export-ofef top-level-feature-value)
                             (export-ofef-special top-level-feature-value :feature-value-pair :feature-types feature-types)))) into ofef-pairs
-        finally (return (format nil "{~{~a~^,~%~}}" ofef-pairs))))
+        finally (return (format nil "{~%~{~a~^,~%~}~%}" ofef-pairs))))
 
 (defmethod export-ofef-special (feature-value-pair (mode (eql :feature-value-pair)) &key feature-types &allow-other-keys)
   "Ofef-export of FCG feature-value pair."
@@ -198,15 +206,15 @@
                                                         (export-ofef feature-value))))))
 
 (defmethod export-ofef-special (feature-value (mode (eql :set-of-predicates))  &key  &allow-other-keys)
-  
+  (format nil "TODO!!!!")
   )
 
 (defmethod export-ofef-special (feature-value (mode (eql :sequence-of-predicates))  &key  &allow-other-keys)
-  
+  (format nil "TODO!!!!")
   )
 
 (defmethod export-ofef-special (feature-value (mode (eql :predicate))  &key  &allow-other-keys)
-  
+  (format nil "TODO!!!!")
   )
 
 (defmethod export-ofef-special (feature-value (mode (eql :set))  &key  &allow-other-keys)
@@ -242,8 +250,12 @@
 (export-ofef-special (attributes (first (constructions-list  *fcg-constructions*))) :alist)
 (json:decode-json-from-string "{\":hello\": \"hello\"}")
 
-(defparameter *contributing-part* (contributing-part (random-elt (constructions *fcg-constructions*))))
-(export-ofef-special *contributing-part* :contributing-part :feature-types (feature-types *fcg-constructions*))
+
+(export-ofef-special (contributing-part (first (constructions-list  *fcg-constructions*))) :contributing-part
+                     :feature-types (feature-types *fcg-constructions*))
+
+(export-ofef-special (conditional-part (first (constructions-list  *fcg-constructions*))) :conditional-part
+                     :feature-types (feature-types *fcg-constructions*))
 
 
 |#
