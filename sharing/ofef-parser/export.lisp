@@ -66,7 +66,7 @@
 (defmethod export-ofef ((grammar fcg-construction-set) &key &allow-other-keys)
   "Ofef-export of fcg-construction-set."
   (format nil
-          "{~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a}"
+          "{~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a}"
           (export-ofef 'hashed) (if (hashed-cxn-inventory-p grammar) (export-ofef t) (export-ofef nil))
           (export-ofef 'configuration) (export-ofef (configuration grammar))
           (export-ofef 'visualization-configuration) (export-ofef (visualization-configuration grammar))
@@ -267,7 +267,7 @@
 (export-ofef-special (conditional-part (first (constructions-list  *fcg-constructions*))) :conditional-part
                      :feature-types (feature-types *fcg-constructions*))
 
-(add-element (make-html (first (constructions-list  *fcg-constructions*))))
+(pprint (export-ofef *fcg-constructions*))
 
 
 |#
