@@ -49,7 +49,7 @@
     ;; proper list
     (loop for element in list
           collect (export-ofef element) into ofef-elements
-          finally (return (if (<= (length ofef-elements) 3)
+          finally (return (if (<= (length ofef-elements) 4)
                               (format nil "[~{~a~^, ~}]" ofef-elements)
                               (format nil "[~{~a~^,~% ~}]" ofef-elements))))
     ;; dotted pair
@@ -90,13 +90,13 @@
 
 (defmethod export-ofef ((unit contributing-unit) &key feature-types &allow-other-keys)
   "Export contributing unit."
-  (format nil "~%[~% ~a, ~%~a~%]"
+  (format nil "~%[~a, ~%~a]"
           (export-ofef (name unit))
           (export-ofef-special (unit-structure unit) :unit-structure :feature-types feature-types)))
 
 (defmethod export-ofef ((unit conditional-unit) &key feature-types &allow-other-keys)
   "Export conditional unit."
-  (format nil "~%[~% ~a, ~%~a, ~%~a~%]"
+  (format nil "~%[~a, ~%~a, ~%~a]"
           (export-ofef (name unit))
           (export-ofef-special (formulation-lock unit) :unit-structure :feature-types feature-types)
           (export-ofef-special (comprehension-lock unit) :unit-structure :feature-types feature-types)))
@@ -173,7 +173,7 @@
   "Ofef-export of the contributing pole of a cxn."
   (loop for unit in contributing-part
         collect (format nil "~a" (export-ofef unit :feature-types feature-types)) into ofef-units
-        finally (return (format nil "[~{~a~^,~}~%]" ofef-units))))
+        finally (return (format nil "[~{~a~^,~}]" ofef-units))))
 
 (defmethod export-ofef-special (conditional-part (mode (eql :conditional-part)) &key feature-types &allow-other-keys)
   "Ofef-export of the contributing pole of a cxn."
@@ -189,19 +189,23 @@
         for top-level-feature-name = (if hashed-feature
                                        (second top-level-feature)
                                        (first top-level-feature))
+        for feature-type = (second (find top-level-feature-name feature-types :key #'first))
         for top-level-feature-value = (if hashed-feature
                                        (third top-level-feature)
-                                       (second top-level-feature))
-        for feature-type = (second (find top-level-feature-name feature-types :key #'first))
+                                       (if feature-type
+                                         (second top-level-feature)
+                                         (if (> (length (rest top-level-feature)) 1)
+                                           (rest top-level-feature)
+                                           (second top-level-feature))))
         collect (format nil "~a: ~a"
                         (if hashed-feature
                           (export-ofef-special top-level-feature-name :hashed-feature-name)
                           (export-ofef top-level-feature-name))
                         (if feature-type
-                          (export-ofef-special top-level-feature-value (make-kw feature-type) :feature-types feature-types)
+                          (export-ofef top-level-feature-value)
                           (if (atom top-level-feature-value)
                             (export-ofef top-level-feature-value)
-                            (export-ofef-special top-level-feature-value :feature-value-pair :feature-types feature-types)))) into ofef-pairs
+                            (export-ofef-special top-level-feature-value :list-of-feature-value-pairs :feature-types feature-types)))) into ofef-pairs
         finally (return (format nil "{~%~{~a~^,~%~}~%}" ofef-pairs))))
 
 (defmethod export-ofef-special (feature-value-pair (mode (eql :feature-value-pair)) &key feature-types &allow-other-keys)
@@ -210,31 +214,13 @@
          (feature-value (second feature-value-pair))
          (feature-type (second (find feature-name feature-types :key #'first))))
     (if feature-type
-      (format nil "~a: ~a" (export-ofef feature-name) (export-ofef-special feature-value (make-kw feature-type)))
+      (format nil "~a: ~a" (export-ofef feature-name) (export-ofef feature-value)) ;;feature value=list
       (format nil "{~a: ~a}" (export-ofef feature-name) (if (listp feature-value)
-                                                        (export-ofef-special feature-value :feature-value-pair :feature-types feature-types)
-                                                        (export-ofef feature-value))))))
+                                                          (export-ofef-special feature-value :feature-value-pair :feature-types feature-types)
+                                                          (export-ofef feature-value))))))
 
 (defmethod export-ofef-special (feature-name (mode (eql :hashed-feature-name))  &key  &allow-other-keys)
   (format nil "\"#~(~a~)\"" feature-name))
-
-(defmethod export-ofef-special (feature-value (mode (eql :set-of-predicates))  &key  &allow-other-keys)
-  (format nil "[~%~{~a~^,~}~%]" (loop for predicate in feature-value
-                                      collect (export-ofef predicate) into ofef-predicates
-                                      finally (return ofef-predicates))))
-
-(defmethod export-ofef-special (feature-value (mode (eql :sequence-of-predicates))  &key  &allow-other-keys)
-  (format nil "[~%~{~a~^,~}~%]" (loop for predicate in feature-value
-                                      collect (export-ofef predicate) into ofef-predicates
-                                      finally (return ofef-predicates))))
-
-(defmethod export-ofef-special (feature-value (mode (eql :set))  &key  &allow-other-keys)
-  (format nil "~a" (export-ofef feature-value))) ;;export list
-
-(defmethod export-ofef-special (feature-value (mode (eql :sequence)) &key  &allow-other-keys)
-  (format nil "~a" (export-ofef feature-value))) ;;export list
-
-
 
 
 #|
@@ -269,5 +255,8 @@
 
 (pprint (export-ofef *fcg-constructions*))
 
+
+(export-ofef-special (conditional-part (nth 14 (constructions-list  *fcg-constructions*))) :conditional-part
+                     :feature-types (feature-types *fcg-constructions*))
 
 |#
