@@ -164,7 +164,7 @@
 (defmethod export-ofef-special (feature-value-pairs (mode (eql :list-of-feature-value-pairs)) &key feature-types &allow-other-keys)
   "Ofef-export of feature-value pair list."
   (declare (ignore feature-types))
-  (loop for (feature . value) in feature-value-pairs
+  (loop for (feature value) in feature-value-pairs
         collect (format nil "~a: ~a" (export-ofef feature) (export-ofef value)) into ofef-pairs
         finally (return (format nil "{~{~a~^,~%~}}" ofef-pairs))))
 
@@ -206,7 +206,7 @@
                           (if (atom top-level-feature-value)
                             (export-ofef top-level-feature-value)
                             (export-ofef-special top-level-feature-value :list-of-feature-value-pairs :feature-types feature-types)))) into ofef-pairs
-        finally (return (format nil "{~%~{~a~^,~%~}~%}" ofef-pairs))))
+        finally (return (format nil "{~{~a~^,~%~}}" ofef-pairs))))
 
 (defmethod export-ofef-special (feature-value-pair (mode (eql :feature-value-pair)) &key feature-types &allow-other-keys)
   "Ofef-export of FCG feature-value pair."
