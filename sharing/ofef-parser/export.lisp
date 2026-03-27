@@ -66,7 +66,7 @@
 (defmethod export-ofef ((grammar fcg-construction-set) &key &allow-other-keys)
   "Ofef-export of fcg-construction-set."
   (format nil
-          "{~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a,~%  ~a: ~a}"
+          "{~a: ~a,~% ~a: ~a,~% ~a: ~a,~% ~a: ~a,~% ~a: ~a,~% ~a: ~a,~% ~a: ~a}"
           (export-ofef 'hashed) (if (hashed-cxn-inventory-p grammar) (export-ofef t) (export-ofef nil))
           (export-ofef 'configuration) (export-ofef (configuration grammar))
           (export-ofef 'visualization-configuration) (export-ofef (visualization-configuration grammar))
@@ -82,8 +82,8 @@
     (format nil "~a: {~%\"name\": ~a, ~%\"contributing-pole\": ~a, ~%\"conditional-pole\": ~a, ~%\"attributes\": ~a, ~%\"feature-types\": ~a}"
             (export-ofef cxn-name)
             (export-ofef cxn-name)
-            (export-ofef-special (contributing-part cxn) :contributing-part :feature-types (feature-types cxn))
-            (export-ofef-special (conditional-part cxn) :conditional-part :feature-types (feature-types cxn))
+            (export-ofef-special (contributing-part cxn) :cxn-pole :feature-types (feature-types cxn))
+            (export-ofef-special (conditional-part cxn) :cxn-pole :feature-types (feature-types cxn))
             (export-ofef-special (attributes cxn) :alist)
             (export-ofef (feature-types cxn)))))
 
@@ -119,41 +119,25 @@
           (export-ofef 'edges) (export-ofef (links network))))
 
 
-
-
-
-
-
-;; (load-demo-grammar)
-;; (categorial-network *fcg-constructions*)
-;; (pprint (export-ofef *fcg-constructions*))
-
-
-(add-categories '(a b c hello) *fcg-constructions*)
-(add-link 'a 'c *fcg-constructions*)
-(add-link 'c 'b *fcg-constructions*)
-(add-link 'a 'hello *fcg-constructions*)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; export-ofef-special ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defmethod export-ofef-special (symbol (mode (eql :eliminate-keyword-colon)) &key (feature-types)  &allow-other-keys)
-  "Ofef-export of feature-value pair."
+  "Ofef-export of keyword."
   (declare (ignore feature-types))
   (format nil "\"~(~a~)\"" symbol))
 
-
 (defmethod export-ofef-special (cxns (mode (eql :constructions-list))  &key feature-types &allow-other-keys)
-  "Ofef-export of feature-value pair."
+  "Ofef-export of constructions list."
   (declare (ignore feature-types))
   (loop for cxn in cxns
         collect (export-ofef cxn) into ofef-cxns
         finally (return (format nil "{~{~a~^,~%~}}" ofef-cxns))))
 
 (defmethod export-ofef-special (alist (mode (eql :alist))  &key feature-types &allow-other-keys)
-  "Ofef-export of feature-value pair."
+  "Ofef-export of alist."
   (declare (ignore feature-types))
   (loop for (key . value) in alist
         for ofef-key = (export-ofef-special key :eliminate-keyword-colon)
@@ -161,26 +145,12 @@
         collect (format nil "~a: ~a" ofef-key ofef-value) into ofef-alist
         finally (return (format nil "{~{~a~^,~%~}}" ofef-alist))))
 
-(defmethod export-ofef-special (feature-value-pairs (mode (eql :list-of-feature-value-pairs)) &key feature-types &allow-other-keys)
-  "Ofef-export of feature-value pair list."
-  (declare (ignore feature-types))
-  (loop for (feature value) in feature-value-pairs
-        collect (format nil "~a: ~a" (export-ofef feature) (export-ofef value)) into ofef-pairs
-        finally (return (format nil "{~{~a~^,~%~}}" ofef-pairs))))
-
-
-(defmethod export-ofef-special (contributing-part (mode (eql :contributing-part)) &key feature-types &allow-other-keys)
-  "Ofef-export of the contributing pole of a cxn."
-  (loop for unit in contributing-part
+(defmethod export-ofef-special (pole (mode (eql :cxn-pole)) &key feature-types &allow-other-keys)
+  "Ofef-export of a cxn pole."
+  (loop for unit in pole
         collect (format nil "~a" (export-ofef unit :feature-types feature-types)) into ofef-units
         finally (return (format nil "[~{~a~^,~}]" ofef-units))))
 
-(defmethod export-ofef-special (conditional-part (mode (eql :conditional-part)) &key feature-types &allow-other-keys)
-  "Ofef-export of the contributing pole of a cxn."
-  (loop for unit in conditional-part
-        collect (format nil "~a" (export-ofef unit :feature-types feature-types)) into ofef-units
-        finally (return (format nil "[~{~a~^,~}]" ofef-units))))
- 
 (defmethod export-ofef-special (unit-structure (mode (eql :unit-structure)) &key feature-types &allow-other-keys)
   "Ofef-export of unit-structure."
   (loop for top-level-feature in unit-structure
@@ -194,9 +164,9 @@
                                        (third top-level-feature)
                                        (if feature-type
                                          (second top-level-feature)
-                                         (if (> (length (rest top-level-feature)) 1)
-                                           (rest top-level-feature)
-                                           (second top-level-feature))))
+                                         (if (atom (first (rest top-level-feature)))
+                                           (second top-level-feature)
+                                           (rest top-level-feature))))
         collect (format nil "~a: ~a"
                         (if hashed-feature
                           (export-ofef-special top-level-feature-name :hashed-feature-name)
@@ -208,7 +178,7 @@
                             (export-ofef-special top-level-feature-value :list-of-feature-value-pairs :feature-types feature-types)))) into ofef-pairs
         finally (return (format nil "{~{~a~^,~%~}}" ofef-pairs))))
 
-(defmethod export-ofef-special (feature-value-pair (mode (eql :feature-value-pair)) &key feature-types &allow-other-keys)
+#|(defmethod export-ofef-special (feature-value-pair (mode (eql :feature-value-pair)) &key feature-types &allow-other-keys)
   "Ofef-export of FCG feature-value pair."
   (let* ((feature-name (first feature-value-pair))
          (feature-value (second feature-value-pair))
@@ -217,7 +187,14 @@
       (format nil "~a: ~a" (export-ofef feature-name) (export-ofef feature-value)) ;;feature value=list
       (format nil "{~a: ~a}" (export-ofef feature-name) (if (listp feature-value)
                                                           (export-ofef-special feature-value :feature-value-pair :feature-types feature-types)
-                                                          (export-ofef feature-value))))))
+                                                          (export-ofef feature-value))))))|#
+
+(defmethod export-ofef-special (feature-value-pairs (mode (eql :list-of-feature-value-pairs)) &key feature-types &allow-other-keys)
+  "Ofef-export of feature-value pair list."
+  (declare (ignore feature-types))
+  (loop for (feature value) in feature-value-pairs
+        collect (format nil "~a: ~a" (export-ofef feature) (export-ofef value)) into ofef-pairs ;;non recursive
+        finally (return (format nil "{~{~a~^,~%~}}" ofef-pairs))))
 
 (defmethod export-ofef-special (feature-name (mode (eql :hashed-feature-name))  &key  &allow-other-keys)
   (format nil "\"#~(~a~)\"" feature-name))
@@ -229,6 +206,12 @@
 ;; #######
 
 (load-demo-grammar)
+
+;; (add-categories '(a b c hello) *fcg-constructions*)
+;; (add-link 'a 'c *fcg-constructions*)
+;; (add-link 'c 'b *fcg-constructions*)
+;; (add-link 'a 'hello *fcg-constructions*)
+
 (export-ofef (configuration *fcg-constructions*))
 (export-ofef 50)
 (export-ofef 'katrien-paul)
@@ -260,3 +243,21 @@
                      :feature-types (feature-types *fcg-constructions*))
 
 |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; export-fcg-grammar-to-ofef    ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(export '(fcg-construction-set>ofef))
+
+(defun fcg-construction-set>ofef (grammar-instance &key (export-directory (babel-pathname :directory '(".tmp")))
+                                                   (file-name "ofef-grammar-export")
+                                                   (extension "json"))
+  (let ((ofef-string (export-ofef grammar-instance))
+        (filename-with-extension (format nil "~(~a~).~(~a~)" file-name extension)))
+    (with-open-file (stream (merge-pathnames export-directory filename-with-extension)
+                            :if-does-not-exist :create :if-exists :overwrite :direction :output)
+      (format stream "~a~%" ofef-string))))
+
+;;(fcg-construction-set>ofef *fcg-constructions* :file-name "casa-grammar")
