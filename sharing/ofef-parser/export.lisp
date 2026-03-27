@@ -30,7 +30,11 @@
 
 (defmethod export-ofef ((string string) &key &allow-other-keys)
   "Export string."
+  (when (search "\"" string) ;;replace double quotes by single quotes for export to json
+    (setf string (string-replace string "\"" "'")))
   (format nil "\"\\\"~(~a~)\\\"\"" string))
+
+;;(export-ofef 'V\(VP\)+ARG1\(\'\'\)-1+1-CXN)
 
 (defmethod export-ofef ((symbol symbol) &key &allow-other-keys)
   "Export symbol."
@@ -41,7 +45,9 @@
         ((keywordp symbol)
          (format nil "\":~(~a~)\"" symbol))
         (t
-         (format nil "\"~(~a~)\"" symbol)))) 
+         (when (search "\"" (symbol-name symbol)) ;;symbol name contains escaped string
+           (setf symbol (intern (string-replace (symbol-name symbol) "\"" "'"))))
+         (format nil "\"~(~a~)\"" symbol))))
 
 (defmethod export-ofef ((list list) &key &allow-other-keys)
   "Export list."
