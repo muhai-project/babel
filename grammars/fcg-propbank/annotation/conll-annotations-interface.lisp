@@ -152,69 +152,71 @@
   (setf (sentence-id sentence) (sentence-id (first (tokens sentence))))                                                  
   ;; propbank frames
   (setf (propbank-frames sentence)
-        (loop for role-number from 0 upto (- (length (propbank-roles (first (tokens sentence)))) 1)
-              collect (loop with frame-name = nil
-                            with frame-file = nil
-                            with propbank-roles = nil
-                            with current-open-role = nil
-                            with current-open-role-indices = nil
-                            with current-open-role-strings = nil
+        (remove nil
+                (loop for role-number from 0 upto (- (length (propbank-roles (first (tokens sentence)))) 1)
+                      collect (loop with frame-name = nil
+                                    with frame-file = nil
+                                    with propbank-roles = nil
+                                    with current-open-role = nil
+                                    with current-open-role-indices = nil
+                                    with current-open-role-strings = nil
 
-                            for token in  (tokens sentence)
-                            for role-field = (nth role-number (propbank-roles token))
-                            ;; Role opening and closing (single token)
-                            if
-                              (and (not current-open-role)
-                                   (string= "(" (subseq role-field 0 1))
-                                   (string= ")" (subseq role-field (- (length role-field) 1))))
-                              do
-                                (when (string= "V" (subseq role-field 1 (- (length role-field) 2)))
-                                  (setf frame-name (propbank-roleset token))
-                                  (setf frame-file (propbank-frame-file token)))
-                                (setf propbank-roles (append propbank-roles (list (make-instance 'propbank-frame-role
-                                                                                                 :role-type (subseq role-field 1 (- (length role-field) 2))
-                                                                                                 :indices (list (token-id token))
-                                                                                                 :role-string (token-string token)))))
-                            else
+                                    for token in  (tokens sentence)
+                                    for role-field = (nth role-number (propbank-roles token))
+                                    ;; Role opening and closing (single token)
+                                    if
+                                      (and (not current-open-role)
+                                           (string= "(" (subseq role-field 0 1))
+                                           (string= ")" (subseq role-field (- (length role-field) 1))))
+                                      do
+                                        (when (string= "V" (subseq role-field 1 (- (length role-field) 2)))
+                                          (setf frame-name (propbank-roleset token))
+                                          (setf frame-file (propbank-frame-file token)))
+                                        (setf propbank-roles (append propbank-roles (list (make-instance 'propbank-frame-role
+                                                                                                         :role-type (subseq role-field 1 (- (length role-field) 2))
+                                                                                                         :indices (list (token-id token))
+                                                                                                         :role-string (token-string token)))))
+                                    else
                       
-                              ;; Role opening
-                              if
-                                (and (not current-open-role)
-                                     (string= "(" (subseq role-field 0 1)))
-                                do
-                                  (when (string= "V" (subseq role-field 1 (- (length role-field) 1)))
-                                    (setf frame-name (propbank-roleset token))
-                                    (setf frame-file (propbank-frame-file token)))
-                                  (setf current-open-role (subseq role-field 1 (- (length role-field) 1)))
-                                  (setf current-open-role-indices (append current-open-role-indices (list (token-id token))))
-                                  (setf current-open-role-strings (append current-open-role-strings (list (token-string token))))
-                              else
-                                ;; Role continuing
-                                if
-                                  (and current-open-role
-                                       (string= "*" role-field))
-                                  do
-                                    (setf current-open-role-indices (append current-open-role-indices (list (token-id token))))
-                                    (setf current-open-role-strings (append current-open-role-strings (list (token-string token))))
-                                else
-                                  ;; Role closing
-                                  if
-                                    (and current-open-role
-                                         (string= ")" (subseq role-field (- (length role-field) 1))))
-                                    do
-                                      (setf current-open-role-indices (append current-open-role-indices (list (token-id token))))
-                                      (setf current-open-role-strings (append current-open-role-strings (list (token-string token))))
-                                      (setf propbank-roles (append propbank-roles (list (make-instance 'propbank-frame-role
-                                                                                                       :role-type current-open-role
-                                                                                                       :indices current-open-role-indices
-                                                                                                       :role-string (format nil "~{~a~^ ~}" current-open-role-strings)))))
-                                      (setf current-open-role nil)
-                                      (setf current-open-role-indices nil)
-                                      (setf current-open-role-strings nil)
-                            finally (return (make-instance 'propbank-frame
-                                                           :frame-name frame-name
-                                                           :propbank-frame-file frame-file
-                                                           :frame-roles propbank-roles))))))
+                                      ;; Role opening
+                                      if
+                                        (and (not current-open-role)
+                                             (string= "(" (subseq role-field 0 1)))
+                                        do
+                                          (when (string= "V" (subseq role-field 1 (- (length role-field) 1)))
+                                            (setf frame-name (propbank-roleset token))
+                                            (setf frame-file (propbank-frame-file token)))
+                                          (setf current-open-role (subseq role-field 1 (- (length role-field) 1)))
+                                          (setf current-open-role-indices (append current-open-role-indices (list (token-id token))))
+                                          (setf current-open-role-strings (append current-open-role-strings (list (token-string token))))
+                                      else
+                                        ;; Role continuing
+                                        if
+                                          (and current-open-role
+                                               (string= "*" role-field))
+                                          do
+                                            (setf current-open-role-indices (append current-open-role-indices (list (token-id token))))
+                                            (setf current-open-role-strings (append current-open-role-strings (list (token-string token))))
+                                        else
+                                          ;; Role closing
+                                          if
+                                            (and current-open-role
+                                                 (string= ")" (subseq role-field (- (length role-field) 1))))
+                                            do
+                                              (setf current-open-role-indices (append current-open-role-indices (list (token-id token))))
+                                              (setf current-open-role-strings (append current-open-role-strings (list (token-string token))))
+                                              (setf propbank-roles (append propbank-roles (list (make-instance 'propbank-frame-role
+                                                                                                               :role-type current-open-role
+                                                                                                               :indices current-open-role-indices
+                                                                                                               :role-string (format nil "~{~a~^ ~}" current-open-role-strings)))))
+                                              (setf current-open-role nil)
+                                              (setf current-open-role-indices nil)
+                                              (setf current-open-role-strings nil)
+                                    finally (return (when (> (length propbank-roles) 1) ;;do not create annotations for rolesets with only 'v' role
+                                                      (make-instance 'propbank-frame
+                                                                     :frame-name frame-name
+                                                                     :propbank-frame-file frame-file
+                                                                     :frame-roles propbank-roles))))))))
 
 
 

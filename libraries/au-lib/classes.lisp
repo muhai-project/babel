@@ -1,16 +1,16 @@
 (in-package :au-lib)
 
-(export '(anti-unification-result
+(export '(#|anti-unification-result
           pattern source generalisation
           pattern-bindings source-bindings
-          pattern-delta source-delta cost
+          pattern-delta source-delta cost|#
           predicate-alignment-processor
           queue
           predicate-alignment-state
           pattern-predicates source-predicates
           pattern-remaining source-remaining))
 
-(defclass anti-unification-result ()
+#|(defclass anti-unification-result ()
   ((pattern
     :accessor pattern :initarg :pattern :initform nil)
    (source
@@ -28,7 +28,7 @@
    (cost
     :accessor cost :initarg :cost :type number :initform 0))
   (:documentation "Result of anti-unification consists of a generalisation,
-                   delta's, bindings lists, and a cost."))
+                   delta's, bindings lists, and a cost."))|#
 
 
 (defclass predicate-alignment-processor ()

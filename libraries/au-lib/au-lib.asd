@@ -12,6 +12,7 @@
                "alexandria"
                "com.inuoe.jzon"
                "monitors" ;; !!! monitors package from babel
+               "fcg";; !!! fcg system from babel
                )
   :serial t
   :components ((:file "packages")

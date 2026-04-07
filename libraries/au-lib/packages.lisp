@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage :au-lib
-  (:use :common-lisp :cl-user :monitors)
+  (:use :common-lisp :cl-user :monitors :fcg)
   (:import-from :alexandria
                 #:shuffle
                 #:random-elt
@@ -9,4 +9,5 @@
                 #:compose
                 #:hash-table-keys
                 #:hash-table-alist)
-  (:export #:anti-unify-predicate-networks))
+  (:export
+   #:anti-unify-predicate-networks))

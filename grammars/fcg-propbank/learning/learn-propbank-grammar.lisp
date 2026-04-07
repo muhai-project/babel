@@ -122,7 +122,7 @@ increments frequency of existing cxn. Also adds a new lexical category
 to the categorial network. Returns the lexical category."
   (let* ((lemma (feature-value (find 'lemma (unit-body v-unit) :key #'feature-name)))
          (syn-class (feature-value (find 'syn-class (unit-body v-unit) :key #'feature-name)))
-         (fe-category (intern (symbol-name (make-id (format nil "~a~a" (truncate-frame-name (frame-name gold-frame)) syn-class)))
+         (fe-category (intern (upcase (format nil "~a~a" (truncate-frame-name (frame-name gold-frame)) syn-class))
                                :fcg-propbank))
          (cxn-name (intern (upcase (format nil "~a~a-cxn" lemma syn-class)) :fcg-propbank))
          (equivalent-cxn (find-cxn cxn-name cxn-inventory :hash-key lemma :key #'name)))
